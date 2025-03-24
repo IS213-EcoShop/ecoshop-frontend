@@ -111,48 +111,6 @@
         </div>
       </section>
   
-      <!-- Footer -->
-      <footer class="footer">
-        <div class="footer-content">
-          <div class="footer-company">
-            <h3>SustainaMart</h3>
-            <p>2 Bayfront Avenue</p>
-            <p>Unit #-01, The Shoppes at Marina Bay Sands,</p>
-            <p>Singapore, 018972, Singapore</p>
-          </div>
-          <div class="footer-links">
-            <div class="footer-column">
-              <h4>Links</h4>
-              <ul>
-                <li><a href="/about-us">About Us</a></li>
-                <li><a href="/marketplace">Marketplace</a></li>
-                <li><a href="/trade-in-service">Trade-in Service</a></li>
-                <li><a href="/sustainability-challenges">Sustainability Challenges</a></li>
-                <li><a href="/rewards">Rewards</a></li>
-              </ul>
-            </div>
-            <div class="footer-column">
-              <h4>Help</h4>
-              <ul>
-                <li><a href="/payment-options">Payment Options</a></li>
-                <li><a href="/returns">Returns</a></li>
-                <li><a href="/privacy-policy">Privacy Policies</a></li>
-                <li><a href="/faqs">FAQs</a></li>
-              </ul>
-            </div>
-            <div class="footer-column">
-              <h4>Newsletter</h4>
-              <div class="newsletter-form">
-                <input type="email" placeholder="Enter Your Email Address..." />
-                <button>SUBSCRIBE</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="copyright">
-          <p>© 2025 SustainaMart. All rights reserved</p>
-        </div>
-      </footer>
     </div>
   </template>
   
@@ -529,50 +487,121 @@
   }
   
   /* Our Impact Section */
-  .impact-section {
+ /* Our Impact Section - Updated */
+.impact-section {
   padding: 4rem 2rem;
   background-color: #fcf8f3;
+  text-align: center;
+  position: relative;
+}
+
+.section-title {
+  color: #704116;
+  font-size: 2rem;
+  margin-bottom: 3rem;
+  text-align: center;
+  position: relative;
+}
+
+/* Add a decorative line under the title */
+.impact-section .section-title:after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 3px;
+  background-color: #8B4513;
+  margin: 0.8rem auto 0;
 }
 
 .impact-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 3.5rem; /* Increased gap for larger icons */
-  margin-top: 2rem;
+  gap: 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* Add connecting lines between stat cards */
+.impact-stats:before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 70%;
+  height: 2px;
+  background-color: rgba(112, 65, 22, 0.2);
+  transform: translate(-50%, -50%);
+}
+
+.impact-stats:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 70%;
+  background-color: rgba(112, 65, 22, 0.2);
+  transform: translate(-50%, -50%);
+}
+
+.impact-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(112, 65, 22, 0.05) 0%, transparent 70%);
+  z-index: 0;
 }
 
 .stat-card {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 2.5rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   text-align: center;
-  padding: 2rem 1.5rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .stat-icon {
-  width: 100px; /* Significantly increased from 80px */
-  height: 100px; /* Significantly increased from 80px */
-  margin: 0 auto 2.5rem; /* Increased bottom margin for more space */
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: rgba(112, 65, 22, 0.1);
+  border-radius: 50%;
+  padding: 1rem;
 }
 
 .stat-icon img {
-  max-width: 70px; /* Significantly increased from 50px */
-  max-height: 70px; /* Significantly increased from 50px */
+  max-width: 50px;
+  max-height: 50px;
+  filter: brightness(0) saturate(100%) invert(26%) sepia(29%) saturate(1122%) hue-rotate(346deg) brightness(91%) contrast(84%);
 }
 
 .stat-card h3 {
-  color: #333333;
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
+  color: #704116;
+  font-size: 1.3rem;
+  margin-bottom: 0.8rem;
   line-height: 1.4;
 }
 
 .stat-card p {
   color: #7b523c;
-  font-size: 0.9rem;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
@@ -581,116 +610,16 @@
     grid-template-columns: 1fr;
   }
   
-  /* Make icons a bit smaller on mobile to ensure everything fits */
-  .stat-icon {
-    width: 90px;
-    height: 90px;
+  .impact-stats:before,
+  .impact-stats:after {
+    display: none; /* Hide connecting lines on mobile */
   }
   
-  .stat-icon img {
-    max-width: 60px;
-    max-height: 60px;
+  .stat-card {
+    max-width: 400px;
+    margin: 0 auto;
   }
 }
-  
-  /* Footer */
-  .footer {
-    background-color: #704116;
-    color: #ffffff;
-    padding: 3rem 2rem 1rem;
-  }
-  
-  .footer-content {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
-    margin-bottom: 2rem;
-  }
-  
-  .footer-company {
-    flex: 1;
-    min-width: 250px;
-  }
-  
-  .footer-company h3 {
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
-  }
-  
-  .footer-company p {
-    font-size: 0.9rem;
-    line-height: 1.5;
-  }
-  
-  .footer-links {
-    flex: 2;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
-  }
-  
-  .footer-column {
-    flex: 1;
-    min-width: 150px;
-  }
-  
-  .footer-column h4 {
-    margin-bottom: 1rem;
-    font-size: 1.1rem;
-  }
-  
-  .footer-column ul {
-    list-style: none;
-  }
-  
-  .footer-column li {
-    margin-bottom: 0.5rem;
-  }
-  
-  .footer-column a {
-    color: #ffffff;
-    text-decoration: none;
-    font-size: 0.9rem;
-    transition: opacity 0.3s;
-  }
-  
-  .footer-column a:hover {
-    opacity: 0.8;
-  }
-  
-  .newsletter-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .newsletter-form input {
-    padding: 0.8rem;
-    border: none;
-    border-radius: 4px;
-  }
-  
-  .newsletter-form button {
-    background-color: #7b523c;
-    color: #ffffff;
-    border: none;
-    padding: 0.8rem;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.3s;
-  }
-  
-  .newsletter-form button:hover {
-    background-color: #5a3412;
-  }
-  
-  .copyright {
-    text-align: center;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    font-size: 0.8rem;
-  }
   
   /* Responsive Design */
   @media (max-width: 1024px) {
