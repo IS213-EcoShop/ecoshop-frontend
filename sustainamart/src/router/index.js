@@ -1,21 +1,43 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+
+// Import views based on your updated structure
+import About from '../views/About.vue'
+import Marketplace from '../views/Marketplace.vue'
+import Rewards from '../views/Rewards.vue'
+import TradeIn from '../views/TradeIn.vue'
+import ContactSupport from '../views/ContactSupport.vue' // Adjust the path as per your structure
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
-      name: 'home',
-      component: HomeView,
+      path: '/contact',
+      name: 'contact',
+      component: ContactSupport, // If this is your default page, use it as the home
     },
     {
       path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
+      name: 'home',
+      component: About, 
+    },
+    {
+      path: '/',
+      redirect: '/about',
+    },
+    {
+      path: '/marketplace',
+      name: 'marketplace',
+      component: Marketplace,
+    },
+    {
+      path: '/rewards',
+      name: 'rewards',
+      component: Rewards,
+    },
+    {
+      path: '/trade-in',
+      name: 'trade-in',
+      component: TradeIn,
     },
   ],
 })
