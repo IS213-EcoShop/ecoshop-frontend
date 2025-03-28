@@ -1,12 +1,14 @@
 <template>
+  <div class="app-container">
+    <!-- Updated hero section with blurred background -->
     <div class="hero-section">
-      <div class="hero-overlay"></div>
-      <div class="hero-content">
+      <div class="hero-blur-overlay"></div>
+      <div class="container hero-content">
         <h1 class="hero-title">Sustainability Challenges & Rewards</h1>
         <div class="breadcrumb">
           <a href="/" class="breadcrumb-link">Home</a>
-          <i class="icon chevron-right"></i>
-          <span>Sustainability Challenges & Rewards</span>
+          <chevron-right-icon class="breadcrumb-icon" />
+          <span class="breadcrumb-current">Sustainability Challenges & Rewards</span>
         </div>
       </div>
     </div>
@@ -16,75 +18,37 @@
         <div class="column">
           <div class="card">
             <h2 class="points-title">
-              You have <span class="points-highlight">318</span> Points! 
+              You have <span class="points-highlight">{{ userPoints }}</span> Points! 
               <span class="points-history">Point history</span>
             </h2>
             
             <div class="section-header">
-              <h3 class="section-title">Current Missions (5)</h3>
+              <h3 class="section-title">Current Missions ({{ currentMissions.length }})</h3>
               <button class="history-button">History</button>
             </div>
             
-            <div class="missions-list">
-              <div class="mission-card">
+            <div v-if="currentMissions.length > 0" class="missions-list">
+              <div v-for="mission in currentMissions" :key="mission.id" class="mission-card">
                 <div class="mission-header">
-                  <span class="points-badge">+100 points</span>
-                  <span class="mission-progress-text">3 of 7</span>
+                  <span class="points-badge">+{{ mission.points }} points</span>
+                  <span class="mission-progress-text">{{ mission.current }} of {{ mission.total }}</span>
                 </div>
-                <h4 class="mission-title">Daily check-in</h4>
+                <h4 class="mission-title">{{ mission.title }}</h4>
                 <div class="progress-bar">
-                  <div class="progress-fill" style="width: 42%"></div>
+                  <div class="progress-fill" :style="{ width: `${(mission.current / mission.total) * 100}%` }"></div>
                 </div>
-                <p class="mission-date">Completed before 23/12/23</p>
+                <p class="mission-date">{{ mission.inProgress ? 'In progress' : `Completed before ${mission.completionDate}` }}</p>
+                <button 
+                  v-if="mission.inProgress" 
+                  @click="completeMission(mission)" 
+                  class="complete-button"
+                >
+                  Complete Mission
+                </button>
               </div>
-              
-              <div class="mission-card">
-                <div class="mission-header">
-                  <span class="points-badge">+200 points</span>
-                  <span class="mission-progress-text">1 of 2</span>
-                </div>
-                <h4 class="mission-title">Weekly loyalty streak</h4>
-                <div class="progress-bar">
-                  <div class="progress-fill" style="width: 50%"></div>
-                </div>
-                <p class="mission-date">Completed before 23/12/23</p>
-              </div>
-              
-              <div class="mission-card">
-                <div class="mission-header">
-                  <span class="points-badge">+100 points</span>
-                  <span class="mission-progress-text">1 of 1</span>
-                </div>
-                <h4 class="mission-title">Refer 1 friend</h4>
-                <div class="progress-bar">
-                  <div class="progress-fill" style="width: 100%"></div>
-                </div>
-                <p class="mission-date">Completed before 23/12/23</p>
-              </div>
-              
-              <div class="mission-card">
-                <div class="mission-header">
-                  <span class="points-badge">+200 points</span>
-                  <span class="mission-progress-text">1 of 2</span>
-                </div>
-                <h4 class="mission-title">Customer satisfaction survey</h4>
-                <div class="progress-bar">
-                  <div class="progress-fill" style="width: 50%"></div>
-                </div>
-                <p class="mission-date">Completed before 23/12/23</p>
-              </div>
-              
-              <div class="mission-card">
-                <div class="mission-header">
-                  <span class="points-badge">+500 points</span>
-                  <span class="mission-progress-text">1 of 1</span>
-                </div>
-                <h4 class="mission-title">Redeem your points</h4>
-                <div class="progress-bar">
-                  <div class="progress-fill" style="width: 100%"></div>
-                </div>
-                <p class="mission-date">Completed before 23/12/23</p>
-              </div>
+            </div>
+            <div v-else class="empty-missions">
+              <p>No current missions. Join a mission to get started!</p>
             </div>
           </div>
           
@@ -92,40 +56,10 @@
             <h3 class="section-title">Earn Points</h3>
             
             <div class="earn-points-grid">
-              <div class="earn-points-card">
-                <span class="points-badge">Get +100 points</span>
-                <h4 class="earn-points-title">Social Media Engagement</h4>
-                <button class="join-button">Join Mission</button>
-              </div>
-              
-              <div class="earn-points-card">
-                <span class="points-badge">Get +100 points</span>
-                <h4 class="earn-points-title">Daily Streak Bonus</h4>
-                <button class="join-button">Join Mission</button>
-              </div>
-              
-              <div class="earn-points-card">
-                <span class="points-badge">Get +200 points</span>
-                <h4 class="earn-points-title">Interactive Challenges</h4>
-                <button class="join-button">Join Mission</button>
-              </div>
-              
-              <div class="earn-points-card">
-                <span class="points-badge">Get +100 points</span>
-                <h4 class="earn-points-title">Weekly Mystery Missions</h4>
-                <button class="join-button">Join Mission</button>
-              </div>
-              
-              <div class="earn-points-card">
-                <span class="points-badge">Get +200 points</span>
-                <h4 class="earn-points-title">Social Media Challenges</h4>
-                <button class="join-button">Join Mission</button>
-              </div>
-              
-              <div class="earn-points-card">
-                <span class="points-badge">Get +300 points</span>
-                <h4 class="earn-points-title">User-generated Content Rewards</h4>
-                <button class="join-button">Join Mission</button>
+              <div v-for="mission in availableMissions" :key="mission.id" class="earn-points-card">
+                <span class="points-badge">Get +{{ mission.points }} points</span>
+                <h4 class="earn-points-title">{{ mission.title }}</h4>
+                <button @click="joinMission(mission)" class="join-button">Join Mission</button>
               </div>
             </div>
           </div>
@@ -136,58 +70,19 @@
             <h3 class="section-title">Leaderboard</h3>
             
             <div class="leaderboard-list">
-              <div class="leaderboard-item">
-                <div class="leaderboard-rank">4</div>
-                <div class="leaderboard-user">
-                  <div class="user-avatar"></div>
-                  <div class="user-name">@sri1809</div>
+              <div 
+                v-for="(user, index) in leaderboard" 
+                :key="user.id"
+                class="leaderboard-item"
+                :class="{ 'current-user': user.isCurrentUser, 'top-three': index < 3 }"
+              >
+                <div class="leaderboard-rank" :class="{ 'rank-1': index === 0, 'rank-2': index === 1, 'rank-3': index === 2 }">
+                  {{ index + 1 }}
                 </div>
-                <div class="user-score">400</div>
-              </div>
-              
-              <div class="leaderboard-item">
-                <div class="leaderboard-rank">5</div>
                 <div class="leaderboard-user">
-                  <div class="user-avatar"></div>
-                  <div class="user-name">@ayushi23</div>
+                  <div class="user-name">{{ user.username }} {{ user.isCurrentUser ? '(You)' : '' }}</div>
                 </div>
-                <div class="user-score">367</div>
-              </div>
-              
-              <div class="leaderboard-item">
-                <div class="leaderboard-rank">6</div>
-                <div class="leaderboard-user">
-                  <div class="user-avatar"></div>
-                  <div class="user-name">@ruchi4567</div>
-                </div>
-                <div class="user-score">340</div>
-              </div>
-              
-              <div class="leaderboard-item">
-                <div class="leaderboard-rank">7</div>
-                <div class="leaderboard-user">
-                  <div class="user-avatar"></div>
-                  <div class="user-name">@frenny56789</div>
-                </div>
-                <div class="user-score">320</div>
-              </div>
-              
-              <div class="leaderboard-item current-user">
-                <div class="leaderboard-rank">8</div>
-                <div class="leaderboard-user">
-                  <div class="user-avatar"></div>
-                  <div class="user-name">@chicken345 (You)</div>
-                </div>
-                <div class="user-score">318</div>
-              </div>
-              
-              <div class="leaderboard-item">
-                <div class="leaderboard-rank">9</div>
-                <div class="leaderboard-user">
-                  <div class="user-avatar"></div>
-                  <div class="user-name">@brinda670988</div>
-                </div>
-                <div class="user-score">310</div>
+                <div class="user-score" :class="{ 'points-updated': user.isCurrentUser && pointsUpdated }">{{ user.points }}</div>
               </div>
             </div>
           </div>
@@ -195,84 +90,40 @@
           <div class="card">
             <h3 class="section-title">Redeem Points</h3>
             
-            <div class="redeem-points-grid">
-              <div class="redeem-card">
-                <div class="brand-logo syne">syne</div>
+            <div v-if="userPoints >= 500" class="redeem-points-grid">
+              <div v-for="voucher in vouchers" :key="voucher.id" class="redeem-card">
+                <div class="voucher-amount">{{ voucher.amount }}</div>
                 <div class="redeem-content">
-                  <h4 class="redeem-title">10% Syne Studio discount voucher</h4>
-                  <p class="redeem-points">1,000 Points</p>
-                  <button class="redeem-button">Redeem</button>
-                </div>
-              </div>
-              
-              <div class="redeem-card">
-                <div class="brand-logo patagonia">patagonia</div>
-                <div class="redeem-content">
-                  <h4 class="redeem-title">25% Patagonia discount voucher</h4>
-                  <p class="redeem-points">2,500 Points</p>
-                  <button class="redeem-button">Redeem</button>
-                </div>
-              </div>
-              
-              <div class="redeem-card">
-                <div class="brand-logo esse">Esse</div>
-                <div class="redeem-content">
-                  <h4 class="redeem-title">10% Esse discount voucher</h4>
-                  <p class="redeem-points">1,000 Points</p>
-                  <button class="redeem-button">Redeem</button>
-                </div>
-              </div>
-              
-              <div class="redeem-card">
-                <div class="brand-logo reformation">Reformation</div>
-                <div class="redeem-content">
-                  <h4 class="redeem-title">25% Reformation discount voucher</h4>
-                  <p class="redeem-points">2,500 Points</p>
-                  <button class="redeem-button">Redeem</button>
-                </div>
-              </div>
-              
-              <div class="redeem-card">
-                <div class="brand-logo pact">pact</div>
-                <div class="redeem-content">
-                  <h4 class="redeem-title">10% Pact discount voucher</h4>
-                  <p class="redeem-points">1,000 Points</p>
-                  <button class="redeem-button">Redeem</button>
-                </div>
-              </div>
-              
-              <div class="redeem-card">
-                <div class="brand-logo girlfriend">girlfriend collective</div>
-                <div class="redeem-content">
-                  <h4 class="redeem-title">25% Girlfriend Collective discount voucher</h4>
-                  <p class="redeem-points">2,500 Points</p>
-                  <button class="redeem-button">Redeem</button>
-                </div>
-              </div>
-              
-              <div class="redeem-card">
-                <div class="brand-logo stella">STELLA McCARTNEY</div>
-                <div class="redeem-content">
-                  <h4 class="redeem-title">10% Stella McCartney discount voucher</h4>
-                  <p class="redeem-points">1,000 Points</p>
-                  <button class="redeem-button">Redeem</button>
-                </div>
-              </div>
-              
-              <div class="redeem-card">
-                <div class="brand-logo outerknown">OUTERKNOWN</div>
-                <div class="redeem-content">
-                  <h4 class="redeem-title">25% Outerknown discount voucher</h4>
-                  <p class="redeem-points">2,500 Points</p>
-                  <button class="redeem-button">Redeem</button>
+                  <h4 class="redeem-title">{{ voucher.title }}</h4>
+                  <p class="redeem-points">{{ voucher.points.toLocaleString() }} Points</p>
+                  <button 
+                    @click="redeemVoucher(voucher)" 
+                    class="redeem-button" 
+                    :disabled="userPoints < voucher.points"
+                  >
+                    Redeem
+                  </button>
                 </div>
               </div>
             </div>
+            <div v-else class="insufficient-points">
+              <alert-circle-icon class="insufficient-icon" />
+              <p>You need at least 500 points to redeem vouchers.</p>
+              <p>Complete missions to earn more points!</p>
+            </div>
             
-            <div class="pagination">
-              <div class="pagination-dot active"></div>
-              <div class="pagination-dot"></div>
-              <div class="pagination-dot"></div>
+            <div v-if="userVouchers.length > 0" class="user-vouchers">
+              <h4 class="vouchers-title">Your Vouchers</h4>
+              <div class="user-vouchers-list">
+                <div v-for="voucher in userVouchers" :key="voucher.id" class="user-voucher-card">
+                  <div class="voucher-amount">{{ voucher.amount }}</div>
+                  <div class="voucher-details">
+                    <h5 class="voucher-title">{{ voucher.title }}</h5>
+                    <p class="voucher-expiry">Expires: {{ voucher.expiryDate }}</p>
+                  </div>
+                  <button @click="useVoucher(voucher)" class="use-voucher-button">Use</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -313,10 +164,48 @@
       </div>
     </main>
     
+    <!-- Toast notification for points -->
+    <div v-if="showPointsToast" class="points-toast" :class="{ 'show': showPointsToast }">
+      <div class="toast-content">
+        <plus-icon class="toast-icon" />
+        <span>{{ lastPointsAwarded }} points added!</span>
+      </div>
+    </div>
 
+    <!-- Success/Failure Popup -->
+    <div v-if="showPopup" class="popup-overlay">
+      <div class="popup-container">
+        <div class="popup-header">
+          <h3 class="popup-title">{{ popupData.title }}</h3>
+          <button @click="closePopup" class="close-popup">
+            <x-icon />
+          </button>
+        </div>
+        <div class="popup-content">
+          <div class="popup-icon" :class="{ 'success': popupData.success, 'failure': !popupData.success }">
+            <check-icon v-if="popupData.success" />
+            <x-circle-icon v-else />
+          </div>
+          <p class="popup-message">{{ popupData.message }}</p>
+        </div>
+        <div class="popup-actions">
+          <button @click="closePopup" class="popup-button">{{ popupData.buttonText }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voucher Applied Notification -->
+    <div v-if="showVoucherApplied" class="voucher-applied" :class="{ 'show': showVoucherApplied }">
+      <div class="voucher-applied-content">
+        <check-circle-icon class="voucher-applied-icon" />
+        <span>Voucher applied to your cart!</span>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
+import { ref, reactive, computed, watch } from 'vue'
 import { 
   User as UserIcon, 
   Search as SearchIcon, 
@@ -326,8 +215,331 @@ import {
   Trophy as TrophyIcon,
   ShieldCheck as ShieldCheckIcon,
   Truck as TruckIcon,
-  Headphones as HeadphonesIcon
+  Headphones as HeadphonesIcon,
+  Plus as PlusIcon,
+  X as XIcon,
+  XCircle as XCircleIcon,
+  Check as CheckIcon,
+  CheckCircle as CheckCircleIcon,
+  AlertCircle as AlertCircleIcon
 } from 'lucide-vue-next'
+
+// User points state
+const userPoints = ref(0)
+const pointsUpdated = ref(false)
+const showPointsToast = ref(false)
+const lastPointsAwarded = ref(0)
+
+// Popup state
+const showPopup = ref(false)
+const popupData = reactive({
+  title: '',
+  message: '',
+  success: true,
+  buttonText: 'OK'
+})
+
+// Voucher applied notification
+const showVoucherApplied = ref(false)
+
+// Missions data
+const allMissions = reactive([
+  { 
+    id: 1, 
+    title: 'Buy 1 sustainable product', 
+    points: 500, 
+    current: 0, 
+    total: 1, 
+    completionDate: '',
+    isActive: false,
+    isCompleted: false,
+    inProgress: false
+  },
+  { 
+    id: 2, 
+    title: 'Weekly loyalty streak', 
+    points: 200, 
+    current: 0, 
+    total: 2, 
+    completionDate: '',
+    isActive: false,
+    isCompleted: false,
+    inProgress: false
+  },
+  { 
+    id: 3, 
+    title: 'Refer 1 friend', 
+    points: 100, 
+    current: 0, 
+    total: 1, 
+    completionDate: '',
+    isActive: false,
+    isCompleted: false,
+    inProgress: false
+  },
+  { 
+    id: 4, 
+    title: 'Customer satisfaction survey', 
+    points: 200, 
+    current: 0, 
+    total: 2, 
+    completionDate: '',
+    isActive: false,
+    isCompleted: false,
+    inProgress: false
+  },
+  { 
+    id: 5, 
+    title: 'Social Media Engagement', 
+    points: 100, 
+    current: 0, 
+    total: 1, 
+    isActive: false,
+    isCompleted: false,
+    inProgress: false
+  },
+  { 
+    id: 6, 
+    title: 'Daily Streak Bonus', 
+    points: 100, 
+    current: 0, 
+    total: 1, 
+    isActive: false,
+    isCompleted: false,
+    inProgress: false
+  }
+])
+
+// Computed properties for filtered missions
+const currentMissions = computed(() => {
+  return allMissions.filter(mission => mission.isActive && !mission.isCompleted)
+})
+
+const availableMissions = computed(() => {
+  return allMissions.filter(mission => !mission.isActive)
+})
+
+// Leaderboard data
+const leaderboard = reactive([
+  { id: 1, username: '@johndoe123', points: 850, isCurrentUser: false },
+  { id: 2, username: '@sarahsmith', points: 720, isCurrentUser: false },
+  { id: 3, username: '@mikebrown', points: 615, isCurrentUser: false },
+  { id: 4, username: '@sri1809', points: 400, isCurrentUser: false },
+  { id: 5, username: '@ayushi23', points: 367, isCurrentUser: false },
+  { id: 6, username: '@ruchi4567', points: 340, isCurrentUser: false },
+  { id: 7, username: '@frenny56789', points: 320, isCurrentUser: false },
+  { id: 8, username: '@chicken345', points: 0, isCurrentUser: true },
+  { id: 9, username: '@brinda670988', points: 310, isCurrentUser: false }
+])
+
+// Vouchers data
+const vouchers = reactive([
+  { id: 1, amount: '$5', title: '$5 Discount Voucher', points: 500 },
+  { id: 2, amount: '$10', title: '$10 Discount Voucher', points: 1000 },
+  { id: 3, amount: '$5', title: '$5 Discount Voucher', points: 500 },
+  { id: 4, amount: '$10', title: '$10 Discount Voucher', points: 1000 }
+])
+
+// User's redeemed vouchers
+const userVouchers = reactive([])
+
+// Function to join a mission
+const joinMission = async (mission) => {
+  try {
+    // Simulate API call to join mission
+    // In a real app, you would make an actual API call here
+    // const response = await fetch('/api/missions/join', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ missionId: mission.id })
+    // })
+    // const data = await response.json()
+    
+    // Simulate successful response
+    const missionToUpdate = allMissions.find(m => m.id === mission.id)
+    
+    if (missionToUpdate) {
+      // Update mission status
+      missionToUpdate.isActive = true
+      missionToUpdate.inProgress = true
+      missionToUpdate.current = 0
+      
+      // Show popup
+      popupData.title = 'Mission Joined'
+      popupData.message = `You've joined the "${mission.title}" mission. Complete it to earn ${mission.points} points!`
+      popupData.success = true
+      popupData.buttonText = 'Start Mission'
+      showPopup.value = true
+    }
+  } catch (error) {
+    console.error('Error joining mission:', error)
+    
+    // Show error popup
+    popupData.title = 'Error'
+    popupData.message = 'Failed to join mission. Please try again later.'
+    popupData.success = false
+    popupData.buttonText = 'OK'
+    showPopup.value = true
+  }
+}
+
+// Function to complete a mission
+const completeMission = async (mission) => {
+  try {
+    // Simulate API call to complete mission
+    // In a real app, you would make an actual API call here
+    // const response = await fetch('/api/missions/complete', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ missionId: mission.id })
+    // })
+    // const data = await response.json()
+    
+    // Simulate successful response
+    const missionToUpdate = allMissions.find(m => m.id === mission.id)
+    
+    if (missionToUpdate) {
+      // Update mission status
+      missionToUpdate.current = missionToUpdate.total
+      missionToUpdate.isCompleted = true
+      missionToUpdate.inProgress = false
+      
+      // Set completion date
+      const today = new Date()
+      missionToUpdate.completionDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear().toString().substr(-2)}`
+      
+      // Award points
+      userPoints.value += missionToUpdate.points
+      lastPointsAwarded.value = missionToUpdate.points
+      
+      // Update leaderboard
+      const currentUser = leaderboard.find(user => user.isCurrentUser)
+      if (currentUser) {
+        currentUser.points += missionToUpdate.points
+        
+        // Sort leaderboard by points
+        leaderboard.sort((a, b) => b.points - a.points)
+      }
+      
+      // Show points updated animation
+      pointsUpdated.value = true
+      setTimeout(() => {
+        pointsUpdated.value = false
+      }, 2000)
+      
+      // Show toast notification
+      showPointsToast.value = true
+      setTimeout(() => {
+        showPointsToast.value = false
+      }, 3000)
+      
+      // Show success popup
+      popupData.title = 'Mission Completed'
+      popupData.message = `Congratulations! You've completed the "${mission.title}" mission and earned ${mission.points} points!`
+      popupData.success = true
+      popupData.buttonText = 'Claim Reward'
+      showPopup.value = true
+    }
+  } catch (error) {
+    console.error('Error completing mission:', error)
+    
+    // Show error popup
+    popupData.title = 'Error'
+    popupData.message = 'Failed to complete mission. Please try again later.'
+    popupData.success = false
+    popupData.buttonText = 'OK'
+    showPopup.value = true
+  }
+}
+
+// Function to redeem a voucher
+const redeemVoucher = async (voucher) => {
+  try {
+    // Check if user has enough points
+    if (userPoints.value < voucher.points) {
+      // Show error popup
+      popupData.title = 'Insufficient Points'
+      popupData.message = `You need ${voucher.points} points to redeem this voucher. You currently have ${userPoints.value} points.`
+      popupData.success = false
+      popupData.buttonText = 'OK'
+      showPopup.value = true
+      return
+    }
+    
+    // Simulate API call to validate points and redeem voucher
+    // In a real app, you would make an actual API call here
+    // const response = await fetch('/api/vouchers/redeem', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ voucherId: voucher.id })
+    // })
+    // const data = await response.json()
+    
+    // Simulate successful response
+    // Deduct points
+    userPoints.value -= voucher.points
+    
+    // Update leaderboard
+    const currentUser = leaderboard.find(user => user.isCurrentUser)
+    if (currentUser) {
+      currentUser.points -= voucher.points
+      
+      // Sort leaderboard by points
+      leaderboard.sort((a, b) => b.points - a.points)
+    }
+    
+    // Add voucher to user's vouchers
+    const expiryDate = new Date()
+    expiryDate.setMonth(expiryDate.getMonth() + 3)
+    const formattedExpiryDate = `${expiryDate.getDate()}/${expiryDate.getMonth() + 1}/${expiryDate.getFullYear()}`
+    
+    userVouchers.push({
+      id: Date.now(), // Generate a unique ID
+      amount: voucher.amount,
+      title: voucher.title,
+      expiryDate: formattedExpiryDate
+    })
+    
+    // Show success popup
+    popupData.title = 'Voucher Redeemed'
+    popupData.message = `You've successfully redeemed a ${voucher.amount} voucher! It has been added to your vouchers.`
+    popupData.success = true
+    popupData.buttonText = 'OK'
+    showPopup.value = true
+  } catch (error) {
+    console.error('Error redeeming voucher:', error)
+    
+    // Show error popup
+    popupData.title = 'Error'
+    popupData.message = 'Failed to redeem voucher. Please try again later.'
+    popupData.success = false
+    popupData.buttonText = 'OK'
+    showPopup.value = true
+  }
+}
+
+// Function to use a voucher
+const useVoucher = (voucher) => {
+  // Simulate applying voucher to cart
+  // In a real app, you would make an API call or update the cart state
+  
+  // Show voucher applied notification
+  showVoucherApplied.value = true
+  setTimeout(() => {
+    showVoucherApplied.value = false
+    
+    // Remove the voucher from user's vouchers
+    const index = userVouchers.findIndex(v => v.id === voucher.id)
+    if (index !== -1) {
+      userVouchers.splice(index, 1)
+    }
+  }, 3000)
+}
+
+// Function to close popup
+const closePopup = () => {
+  showPopup.value = false
+}
 </script>
 
 <style>
@@ -430,49 +642,51 @@ button {
   background-color: #f5f5f5;
 }
 
-/* Hero Section */
+/* Updated Hero Section with blurred background */
 .hero-section {
   position: relative;
-  height: 12rem;
-  background-image: url('/placeholder.svg?height=400&width=1200');
+  height: 200px;
+  background-image: url('rectangle-1.png');
   background-size: cover;
   background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.hero-overlay {
+.hero-blur-overlay {
   position: absolute;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.3);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(5px);
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .hero-content {
-  position: relative;
-  z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
   text-align: center;
+  z-index: 10;
+  position: relative; /* Ensures content stays above the blur overlay */
 }
 
 .hero-title {
-  font-size: 1.875rem;
+  font-size: 2.5rem;
   font-weight: bold;
-  color: white;
-}
-
-@media (min-width: 768px) {
-  .hero-title {
-    font-size: 2.25rem;
-  }
+  color: #704116;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); /* Optional: adds slight shadow to make text more readable */
 }
 
 .breadcrumb {
   display: flex;
   align-items: center;
-  margin-top: 1rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: #704116;
+  border-radius: 1rem;
 }
 
 .breadcrumb-link {
@@ -526,6 +740,7 @@ button {
 
 .points-highlight {
   color: #704116;
+  transition: color 0.3s ease;
 }
 
 .points-history {
@@ -555,6 +770,15 @@ button {
   color: #777;
 }
 
+/* Empty Missions */
+.empty-missions {
+  padding: 2rem;
+  text-align: center;
+  color: #777;
+  border: 1px dashed #ddd;
+  border-radius: 0.5rem;
+}
+
 /* Missions */
 .missions-list {
   display: flex;
@@ -566,6 +790,12 @@ button {
   border: 1px solid #eee;
   border-radius: 0.5rem;
   padding: 1rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mission-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 }
 
 .mission-header {
@@ -603,12 +833,32 @@ button {
 .progress-fill {
   height: 100%;
   background-color: #bb9d78;
+  transition: width 0.5s ease-out;
 }
 
 .mission-date {
   font-size: 0.75rem;
   color: #777;
   margin-top: 0.5rem;
+}
+
+.complete-button {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.75rem;
+  background-color: #704116;
+  color: white;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.complete-button:hover {
+  background-color: #5a3412;
+}
+
+.complete-button:active {
+  transform: scale(0.98);
 }
 
 /* Earn Points */
@@ -628,6 +878,12 @@ button {
   border: 1px solid #eee;
   border-radius: 0.5rem;
   padding: 1rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.earn-points-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 }
 
 .earn-points-title {
@@ -643,11 +899,15 @@ button {
   border-radius: 0.25rem;
   color: #704116;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.1s;
 }
 
 .join-button:hover {
   background-color: #f8ead7;
+}
+
+.join-button:active {
+  transform: scale(0.98);
 }
 
 /* Leaderboard */
@@ -663,6 +923,12 @@ button {
   padding: 0.75rem;
   background-color: #f8ead7;
   border-radius: 0.5rem;
+  transition: transform 0.3s ease;
+}
+
+.leaderboard-item.top-three {
+  background-color: #f0e6d2;
+  border: 1px solid #bb9d78;
 }
 
 .leaderboard-item.current-user {
@@ -683,18 +949,29 @@ button {
   border-radius: 50%;
 }
 
+.leaderboard-rank.rank-1 {
+  background-color: #ffd700; /* Gold */
+  color: #704116;
+  font-size: 1rem;
+}
+
+.leaderboard-rank.rank-2 {
+  background-color: #c0c0c0; /* Silver */
+  color: #704116;
+  font-size: 1rem;
+}
+
+.leaderboard-rank.rank-3 {
+  background-color: #cd7f32; /* Bronze */
+  color: #704116;
+  font-size: 1rem;
+}
+
 .leaderboard-user {
   display: flex;
   align-items: center;
   flex: 1;
-}
-
-.user-avatar {
-  width: 2rem;
-  height: 2rem;
-  margin-right: 0.75rem;
-  background-color: #ddd;
-  border-radius: 50%;
+  padding-left: 0.5rem;
 }
 
 .user-name {
@@ -703,6 +980,19 @@ button {
 
 .user-score {
   font-weight: 600;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.points-updated {
+  color: #704116;
+  transform: scale(1.2);
+  animation: pulse 1s ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 /* Redeem Points */
@@ -722,61 +1012,23 @@ button {
   border: 1px solid #eee;
   border-radius: 0.5rem;
   overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.brand-logo {
+.redeem-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.voucher-amount {
   height: 8rem;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.brand-logo.syne {
-  background-color: #bb9d78;
-  color: white;
-  font-family: serif;
-}
-
-.brand-logo.patagonia {
-  background-color: #003366;
-  color: white;
-}
-
-.brand-logo.esse {
-  background-color: #f5f5f5;
-  color: #333;
-  font-family: serif;
-  font-size: 2rem;
-}
-
-.brand-logo.reformation {
-  background-color: #eee;
-  color: #333;
-}
-
-.brand-logo.pact {
-  background-color: #333;
-  color: white;
-  font-size: 2rem;
-}
-
-.brand-logo.girlfriend {
-  background-color: #f8ead7;
-  color: #704116;
-  font-size: 1.25rem;
-}
-
-.brand-logo.stella {
-  background-color: white;
-  color: #333;
-  font-weight: 300;
-}
-
-.brand-logo.outerknown {
-  background-color: black;
+  font-size: 3rem;
+  font-weight: 700;
+  background-color: #704116;
   color: white;
 }
 
@@ -802,29 +1054,94 @@ button {
   border-radius: 0.25rem;
   color: #704116;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.1s;
 }
 
 .redeem-button:hover {
   background-color: #f8ead7;
 }
 
-.pagination {
+.redeem-button:active {
+  transform: scale(0.98);
+}
+
+.redeem-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Insufficient Points */
+.insufficient-points {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
+  padding: 2rem;
+  text-align: center;
+  color: #777;
+  border: 1px dashed #ddd;
+  border-radius: 0.5rem;
 }
 
-.pagination-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background-color: #ddd;
+.insufficient-icon {
+  color: #704116;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
 }
 
-.pagination-dot.active {
-  background-color: #bb9d78;
+/* User Vouchers */
+.user-vouchers {
+  margin-top: 2rem;
+}
+
+.vouchers-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.user-vouchers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.user-voucher-card {
+  display: flex;
+  align-items: center;
+  border: 1px solid #eee;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.voucher-details {
+  flex: 1;
+  padding: 0.75rem;
+}
+
+.voucher-title {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.voucher-expiry {
+  font-size: 0.75rem;
+  color: #777;
+  margin-top: 0.25rem;
+}
+
+.use-voucher-button {
+  padding: 0.5rem 1rem;
+  height: 100%;
+  background-color: #704116;
+  color: white;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.use-voucher-button:hover {
+  background-color: #5a3412;
 }
 
 /* Features Section */
@@ -871,89 +1188,174 @@ button {
   color: #777;
 }
 
-/* Footer */
-.footer {
+/* Toast notification */
+.points-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
   background-color: #704116;
   color: white;
-  margin-top: 3rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 100;
 }
 
-.footer-content {
-  padding: 3rem 1rem;
+.points-toast.show {
+  transform: translateY(0);
+  opacity: 1;
 }
 
-.footer-grid {
-  display: grid;
-  gap: 2rem;
-  grid-template-columns: 1fr;
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-@media (min-width: 768px) {
-  .footer-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+.toast-icon {
+  color: #fbc15a;
 }
 
-.footer-title {
+/* Popup */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.popup-container {
+  width: 90%;
+  max-width: 500px;
+  background-color: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f8ead7;
+}
+
+.popup-title {
   font-size: 1.25rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  color: #704116;
 }
 
-.footer-address {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  margin-bottom: 1rem;
-}
-
-.footer-links {
-  list-style: none;
-}
-
-.footer-link {
-  display: block;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-}
-
-.footer-link:hover {
-  text-decoration: underline;
-}
-
-.newsletter-form {
+.close-popup {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  color: #704116;
 }
 
-.newsletter-input {
-  flex: 1;
-  padding: 0.5rem 0.75rem;
-  border: none;
-  border-radius: 0.25rem 0 0 0.25rem;
-  font-size: 0.875rem;
+.close-popup:hover {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
-.newsletter-input:focus {
-  outline: none;
+.popup-content {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
-.newsletter-button {
-  padding: 0.5rem 1rem;
-  background-color: #bb9d78;
+.popup-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  margin-bottom: 1rem;
+}
+
+.popup-icon.success {
+  background-color: #e6f7e6;
+  color: #2e7d32;
+}
+
+.popup-icon.failure {
+  background-color: #fdecea;
+  color: #d32f2f;
+}
+
+.popup-message {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #333;
+}
+
+.popup-actions {
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid #eee;
+}
+
+.popup-button {
+  padding: 0.75rem 2rem;
+  background-color: #704116;
   color: white;
   font-weight: 500;
-  border-radius: 0 0.25rem 0.25rem 0;
+  border-radius: 0.25rem;
   transition: background-color 0.2s;
 }
 
-.newsletter-button:hover {
-  background-color: #a36d1d;
+.popup-button:hover {
+  background-color: #5a3412;
 }
 
-.footer-copyright {
-  text-align: center;
-  font-size: 0.875rem;
-  padding-top: 2rem;
-  margin-top: 2rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+/* Voucher Applied Notification */
+.voucher-applied {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background-color: #2e7d32;
+  color: white;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 100;
+}
+
+.voucher-applied.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.voucher-applied-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.voucher-applied-icon {
+  color: white;
 }
 </style>

@@ -2,11 +2,14 @@
   <div class="marketplace">
 
     <!-- Hero Banner -->
-    <div class="hero-banner">
-      <div class="container">
-        <h1>MarketPlace</h1>
+    <div class="hero-section">
+      <div class="hero-blur-overlay"></div>
+      <div class="container hero-content">
+        <h1 class="hero-title">Marketplace</h1>
         <div class="breadcrumb">
-          <a href="#">About Us</a> &gt; <span>Marketplace</span>
+          <a href="/" class="breadcrumb-link">Home</a>
+          <chevron-right-icon class="breadcrumb-icon" />
+          <span class="breadcrumb-current">Marketplace</span>
         </div>
       </div>
     </div>
@@ -231,13 +234,6 @@
 </template>
 
 <script>
-
-import { createClient } from '@supabase/supabase-js'
-
-//const supabaseUrl = 'https://cvtknyvnrxhaqdvdmlde.supabase.co'
-//const supabaseKey = ''
-const supabase = createClient(supabaseUrl, supabaseKey)
-
 
 export default {
   name: 'MarketplaceTab',
@@ -942,7 +938,22 @@ export default {
 }
 </script>
 
+<script setup>
+import { 
+  User as UserIcon, 
+  Search as SearchIcon, 
+  Heart as HeartIcon, 
+  ShoppingCart as ShoppingCartIcon,
+  ChevronRight as ChevronRightIcon,
+  Trophy as TrophyIcon,
+  ShieldCheck as ShieldCheckIcon,
+  Truck as TruckIcon,
+  Headphones as HeadphonesIcon
+} from 'lucide-vue-next'
+</script>
+
 <style scoped>
+
 /* Reset and Base Styles */
 * {
   margin: 0;
@@ -1074,30 +1085,64 @@ button {
 }
 
 /* Hero Banner */
-.hero-banner {
-  background-color: #f9f1e7;
-  padding: 60px 0;
-  text-align: center;
-  color: #242424;
-  background-image: url('/marketplace/headerbackground.png?height=300&width=1200');
+.hero-section {
+  position: relative;
+  height: 200px;
+  background-image: url('rectangle-1.png');
   background-size: cover;
   background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.hero-banner h1 {
-  font-size: 36px;
-  margin-bottom: 10px;
-  color: #242424;
+.hero-blur-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(5px);
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 10;
+  position: relative; /* Ensures content stays above the blur overlay */
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #704116;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); /* Optional: adds slight shadow to make text more readable */
 }
 
 .breadcrumb {
-  font-size: 14px;
-  color: #242424;
+  display: flex;
+  align-items: center;
+  color: #704116;
+  border-radius: 1rem;
 }
 
-.breadcrumb a {
-  color: #242424;
-  opacity: 0.8;
+.breadcrumb-link {
+  font-size: 0.875rem;
+}
+
+.breadcrumb-icon {
+  width: 1rem;
+  height: 1rem;
+  margin: 0 0.5rem;
+}
+
+.breadcrumb-current {
+  font-size: 0.875rem;
 }
 
 /* Filter Bar */

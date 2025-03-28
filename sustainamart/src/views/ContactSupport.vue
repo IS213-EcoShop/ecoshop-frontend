@@ -1,14 +1,14 @@
 <template>
   <div>
     <!-- Hero Section -->
-    <div class="hero">
-      <div class="hero-overlay"></div>
-      <div class="hero-content">
+    <div class="hero-section">
+      <div class="hero-blur-overlay"></div>
+      <div class="container hero-content">
         <h1 class="hero-title">Contact Us</h1>
         <div class="breadcrumb">
           <a href="/" class="breadcrumb-link">Home</a>
-          <i class="icon chevron-right"></i>
-          <span>Contact Us</span>
+          <chevron-right-icon class="breadcrumb-icon" />
+          <span class="breadcrumb-current">Contact Us</span>
         </div>
       </div>
     </div>
@@ -192,54 +192,80 @@ export default {
 }
 </script>
 
+<script setup>
+import { 
+  User as UserIcon, 
+  Search as SearchIcon, 
+  Heart as HeartIcon, 
+  ShoppingCart as ShoppingCartIcon,
+  ChevronRight as ChevronRightIcon,
+  Trophy as TrophyIcon,
+  ShieldCheck as ShieldCheckIcon,
+  Truck as TruckIcon,
+  Headphones as HeadphonesIcon
+} from 'lucide-vue-next'
+</script>
+
 <style scoped>
 /* Hero section */
-.hero {
+.hero-section {
   position: relative;
-  height: 10rem;
-  background-color: #faf3ea;
+  height: 200px;
+  background-image: url('rectangle-1.png');
+  background-size: cover;
+  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-@media (min-width: 768px) {
-  .hero {
-    height: 15rem;
-  }
-}
-
-.hero-overlay {
+.hero-blur-overlay {
   position: absolute;
-  inset: 0;
-  background-image: url('/placeholder.svg?height=400&width=1200');
-  background-size: cover;
-  background-position: center;
-  opacity: 0.3;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(5px);
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .hero-content {
-  position: relative;
-  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  z-index: 10;
+  position: relative; /* Ensures content stays above the blur overlay */
 }
 
 .hero-title {
-  font-size: 1.875rem;
+  font-size: 2.5rem;
   font-weight: bold;
   color: #704116;
   margin-bottom: 0.5rem;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); /* Optional: adds slight shadow to make text more readable */
 }
 
 .breadcrumb {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
+  color: #704116;
+  border-radius: 1rem;
 }
 
 .breadcrumb-link {
-  color: #704116;
+  font-size: 0.875rem;
+}
+
+.breadcrumb-icon {
+  width: 1rem;
+  height: 1rem;
+  margin: 0 0.5rem;
+}
+
+.breadcrumb-current {
+  font-size: 0.875rem;
 }
 
 .icon {
