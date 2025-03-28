@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.3",
     "lucide-vue-next": "^0.483.0"
   }
 }
