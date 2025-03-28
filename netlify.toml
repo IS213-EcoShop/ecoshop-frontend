@@ -1,7 +1,14 @@
 [build]
-  base = "ecoshop-frontend/sustainamart"
-  publish = "ecoshop-frontend/sustainamart/dist"
+  base = "ecoshop-frontend/sustainamart"  # Make sure this path is correct
+  publish = "ecoshop-frontend/sustainamart/dist"  # Path to the dist directory
   command = "npm run build"
 
-[[plugins]]
-  package = "@netlify/plugin-vite"
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/about"
+  to = "/index.html"
+  status = 200
