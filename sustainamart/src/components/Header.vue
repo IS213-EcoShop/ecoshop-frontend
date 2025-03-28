@@ -20,9 +20,9 @@
       <button aria-label="Wishlist" class="icon-button">
         <i class="icon heart"></i>
       </button>
-      <button aria-label="Shopping cart" class="icon-button">
+      <router-link to="/cart" aria-label="Shopping cart" class="icon-button">
         <i class="icon cart"></i>
-      </button>
+      </router-link>
     </div>
   </header>
 </template>
