@@ -1,0 +1,7 @@
+[build]
+  base = "ecoshop-frontend/sustainamart"
+  publish = "ecoshop-frontend/sustainamart/dist"
+  command = "npm run build"
+
+[[plugins]]
+  package = "@netlify/plugin-vite"
