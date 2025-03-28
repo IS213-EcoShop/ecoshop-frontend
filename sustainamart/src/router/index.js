@@ -5,7 +5,8 @@ import About from '../views/About.vue'
 import Marketplace from '../views/Marketplace.vue'
 import Rewards from '../views/Rewards.vue'
 import TradeIn from '../views/TradeIn.vue'
-import ContactSupport from '../views/ContactSupport.vue' // Adjust the path as per your structure
+import ContactSupport from '../views/ContactSupport.vue'
+import Cart from '../views/Cart.vue' // Adjust the path as per your structure
 // import ViewProduct from '../views/ViewProduct.vue'
 
 const router = createRouter({
@@ -39,6 +40,11 @@ const router = createRouter({
       path: '/trade-in',
       name: 'trade-in',
       component: TradeIn,
+    },
+    {
+      path: '/cart',
+      name: 'cart',
+      component: Cart,
     },
   ],
 })

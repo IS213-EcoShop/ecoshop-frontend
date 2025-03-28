@@ -2,11 +2,14 @@
   <div class="marketplace">
 
     <!-- Hero Banner -->
-    <div class="hero-banner">
-      <div class="container">
-        <h1>MarketPlace</h1>
+    <div class="hero-section">
+      <div class="hero-blur-overlay"></div>
+      <div class="container hero-content">
+        <h1 class="hero-title">Marketplace</h1>
         <div class="breadcrumb">
-          <a href="#">About Us</a> &gt; <span>Marketplace</span>
+          <a href="/" class="breadcrumb-link">Home</a>
+          <chevron-right-icon class="breadcrumb-icon" />
+          <span class="breadcrumb-current">Marketplace</span>
         </div>
       </div>
     </div>
@@ -19,7 +22,8 @@
           <button class="filter-button">
             <span class="filter-icon"></span> Filter
           </button>
-          <div class="results-info">Showing {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredProducts.length) }} of {{ filteredProducts.length }} results</div>
+          <div class="results-info">Showing {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage *
+            itemsPerPage, filteredProducts.length) }} of {{ filteredProducts.length }} results</div>
           <div class="sort-options">
             <span>Show</span>
             <select class="select-control" v-model="itemsPerPage" @change="resetPagination">
@@ -74,14 +78,7 @@
             <div class="filter-section">
               <h3>Price Range</h3>
               <div class="price-slider">
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  v-model="priceRange" 
-                  class="slider"
-                  @change="applyPriceFilter"
-                >
+                <input type="range" min="0" max="100" v-model="priceRange" class="slider" @change="applyPriceFilter">
                 <div class="price-inputs">
                   <div>
                     <label>Min</label>
@@ -100,49 +97,37 @@
           <div class="products-section">
             <!-- Tabs -->
             <div class="product-tabs">
-              <button 
-                class="tab-button" 
-                :class="{ active: activeTab === 'new' }"
-                @click="setActiveTab('new')"
-              >
+              <button class="tab-button" :class="{ active: activeTab === 'new' }" @click="setActiveTab('new')">
                 New Finds
               </button>
-              <button 
-                class="tab-button"
-                :class="{ active: activeTab === 'preloved' }"
-                @click="setActiveTab('preloved')"
-              >
+              <button class="tab-button" :class="{ active: activeTab === 'preloved' }"
+                @click="setActiveTab('preloved')">
                 Preloved Gems
               </button>
             </div>
 
             <!-- Product Grid -->
             <div class="product-grid">
-              <div 
-                v-for="product in paginatedProducts" 
-                :key="product.id" 
-                class="product-card"
-              >
+              <div v-for="product in paginatedProducts" :key="product.id" class="product-card">
                 <div class="product-image">
                   <img :src="product.image" :alt="product.name">
-                  <span 
-                    v-if="product.tag" 
-                    class="product-tag" 
-                    :class="product.tagClass"
-                  >
+                  <span v-if="product.tag" class="product-tag" :class="product.tagClass">
                     {{ product.tag }}
                   </span>
                   <button class="hover-cart-btn" @click.stop="addToCart(product)">Add to cart</button>
-                  <a :href="`/product/${product.id}`" class="product-link" @click.prevent="viewProductDetails(product.id)"></a>
+                  <a :href="`/product/${product.id}`" class="product-link"
+                    @click.prevent="viewProductDetails(product.id)"></a>
                 </div>
                 <div class="product-info">
-                  <a :href="`/product/${product.id}`" class="product-title-link" @click.prevent="viewProductDetails(product.id)">
+                  <a :href="`/product/${product.id}`" class="product-title-link"
+                    @click.prevent="viewProductDetails(product.id)">
                     <h3 class="product-title">{{ product.name }}</h3>
                   </a>
                   <p class="product-description">{{ product.description }}</p>
                   <div class="product-price">
                     <span class="current-price">${{ product.price.toFixed(2) }}</span>
-                    <span v-if="product.originalPrice" class="original-price">${{ product.originalPrice.toFixed(2) }}</span>
+                    <span v-if="product.originalPrice" class="original-price">${{ product.originalPrice.toFixed(2)
+                      }}</span>
                   </div>
                 </div>
               </div>
@@ -150,29 +135,17 @@
 
             <!-- Pagination -->
             <div class="pagination">
-              <button 
-                class="page-button prev" 
-                :disabled="currentPage === 1"
-                @click="changePage(currentPage - 1)"
-              >
+              <button class="page-button prev" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
                 Prev
               </button>
-              
-              <button 
-                v-for="page in totalPages" 
-                :key="page" 
-                class="page-button" 
-                :class="{ active: currentPage === page }"
-                @click="changePage(page)"
-              >
+
+              <button v-for="page in totalPages" :key="page" class="page-button"
+                :class="{ active: currentPage === page }" @click="changePage(page)">
                 {{ page }}
               </button>
-              
-              <button 
-                class="page-button next" 
-                :disabled="currentPage === totalPages"
-                @click="changePage(currentPage + 1)"
-              >
+
+              <button class="page-button next" :disabled="currentPage === totalPages"
+                @click="changePage(currentPage + 1)">
                 Next
               </button>
             </div>
@@ -261,11 +234,28 @@
 </template>
 
 <script>
+
 export default {
   name: 'MarketplaceTab',
+  beforeCreate() {
+    console.log('MARKETPLACE - beforeCreate') // Should appear first
+
+  },
+  created() {
+    console.log('MARKETPLACE - created') // Should appear second
+  },
+  beforeMount() {
+    console.log('MARKETPLACE - beforeMount') // Should appear third
+    this.fetchProducts()
+
+  },
+  mounted() {
+    console.log('MARKETPLACE - mounted') // Should appear last
+  },
   data() {
+
     return {
-      priceRange: 50,
+      priceRange: [0, 1000],
       cart: [],
       currentPage: 1,
       itemsPerPage: 12,
@@ -276,523 +266,530 @@ export default {
         newItems: true,
         prelovedItems: false,
         minPrice: 0,
-        maxPrice: 100
+        maxPrice: 1000
       },
-      allProducts: [
-        // Page 1
-        {
-          id: 1,
-          name: 'Bamboo Chair',
-          description: 'Sustainable, comfortable bamboo chair',
-          price: 27.50,
-          image: '/marketplace/bamboochair.png?height=200&width=200',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 2,
-          name: 'Aloe Facial Toner',
-          description: 'Organic aloe toner',
-          price: 17.90,
-          originalPrice: 24.00,
-          image: '/marketplace/aloetoner.png?height=200&width=200',
-          tag: 'Cruelty-Free',
-          tagClass: 'cruelty-free',
-          category: 'Green Beauty',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 3,
-          name: 'Terracotta Side Table',
-          description: 'Handcrafted from raw terracotta',
-          price: 30.00,
-          image: '/marketplace/terracotta.png?height=200&width=200',
-          tag: 'Plastic-Free',
-          tagClass: 'plastic-free',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 4,
-          name: 'BeesWax Food Wraps',
-          description: 'Biodegradable wraps',
-          price: 8.20,
-          originalPrice: 10.90,
-          image: '/marketplace/beeswax.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Green Beauty',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 5,
-          name: 'Reusable Cotton Rounds',
-          description: 'Washable cotton rounds',
-          price: 4.50,
-          image: '/marketplace/cottonrounds.png?height=200&width=200',
-          category: 'Green Beauty',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 6,
-          name: 'Vegan Leather Sleeve',
-          description: 'Cruelty-free vegan leather',
-          price: 28.80,
-          originalPrice: 35.40,
-          image: '/marketplace/vegan.png?height=200&width=200',
-          tag: 'Cruelty-Free',
-          tagClass: 'cruelty-free',
-          category: 'Fashion',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 7,
-          name: 'Coconut Face Bar',
-          description: 'Detoxifying facial cleanser',
-          price: 12.00,
-          image: '/marketplace/coconut.png?height=200&width=200',
-          tag: 'Plastic-Free',
-          tagClass: 'plastic-free',
-          category: 'Green Beauty',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 8,
-          name: 'Glass Storage Jars',
-          description: 'Stylish crate chest',
-          price: 7.40,
-          originalPrice: 9.80,
-          image: '/marketplace/glass.png?height=200&width=200',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 9,
-          name: 'Bamboo Board',
-          description: 'Sturdy, bamboo fabric',
-          price: 7.80,
-          image: '/marketplace/bamboo.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Fashion',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 10,
-          name: 'Silk-Free Scarf',
-          description: 'Organic cotton, natural dye',
-          price: 16.30,
-          originalPrice: 20.00,
-          image: '/marketplace/scarf.png?height=200&width=200',
-          tag: 'Cruelty-Free',
-          tagClass: 'cruelty-free',
-          category: 'Fashion',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 11,
-          name: 'WoodTone Charger',
-          description: 'Wireless charging pad',
-          price: 15.20,
-          image: '/marketplace/woodtone.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Technology',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 12,
-          name: 'Wooden Blocks',
-          description: 'Sustainable, non-toxic wood',
-          price: 13.50,
-          originalPrice: 17.20,
-          image: '/marketplace/blocks.png?height=200&width=200',
-          tag: 'Plastic-Free',
-          tagClass: 'plastic-free',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        
-        // Page 2
-        {
-          id: 13,
-          name: 'Bamboo Toothbrush',
-          description: 'Biodegradable handle, soft bristles',
-          price: 3.99,
-          image: '/marketplace/toothbrush.png?height=200&width=200',
-          tag: 'Plastic-Free',
-          tagClass: 'plastic-free',
-          category: 'Green Beauty',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 14,
-          name: 'Hemp Backpack',
-          description: 'Durable, sustainable hemp material',
-          price: 45.00,
-          originalPrice: 60.00,
-          image: '/marketplace/backpack.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Fashion',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 15,
-          name: 'Solar Power Bank',
-          description: 'Charge your devices with solar energy',
-          price: 29.99,
-          image: '/marketplace/powerbank.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Technology',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 16,
-          name: 'Recycled Paper Notebook',
-          description: '100% recycled paper, soy-based ink',
-          price: 8.50,
-          image: '/marketplace/notebook.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 17,
-          name: 'Organic Cotton T-Shirt',
-          description: 'Soft, breathable organic cotton',
-          price: 19.99,
-          originalPrice: 25.00,
-          image: '/marketplace/organicshirt.png?height=200&width=200',
-          tag: 'Cruelty-Free',
-          tagClass: 'cruelty-free',
-          category: 'Fashion',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 18,
-          name: 'Stainless Steel Water Bottle',
-          description: 'Durable, reusable, BPA-free',
-          price: 18.50,
-          image: '/marketplace/waterbottle.png?height=200&width=200',
-          tag: 'Plastic-Free',
-          tagClass: 'plastic-free',
-          category: 'Green Beauty',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 19,
-          name: 'Recycled Glass Vase',
-          description: 'Handcrafted from recycled glass',
-          price: 22.00,
-          originalPrice: 28.00,
-          image: '/marketplace/vase.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 20,
-          name: 'Biodegradable Phone Case',
-          description: 'Made from plant-based materials',
-          price: 14.99,
-          image: '/marketplace/phonecase.png?height=200&width=200',
-          tag: 'Biodegradable',
-          tagClass: 'low-waste',
-          category: 'Technology',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 21,
-          name: 'Organic Lip Balm Set',
-          description: 'Natural ingredients, plastic-free packaging',
-          price: 9.99,
-          image: '/marketplace/lipbalm.png?height=200&width=200',
-          tag: 'Cruelty-Free',
-          tagClass: 'cruelty-free',
-          category: 'Green Beauty',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 22,
-          name: 'Bamboo Cutlery Set',
-          description: 'Portable, reusable utensils',
-          price: 12.50,
-          originalPrice: 15.00,
-          image: '/marketplace/cutlery.png?height=200&width=200',
-          tag: 'Plastic-Free',
-          tagClass: 'plastic-free',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 23,
-          name: 'Recycled Wool Blanket',
-          description: 'Cozy, sustainable home essential',
-          price: 49.99,
-          image: '/marketplace/blanket.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 24,
-          name: 'Natural Deodorant',
-          description: 'Aluminum-free, compostable packaging',
-          price: 8.99,
-          originalPrice: 11.99,
-          image: '/marketplace/deo.png?height=200&width=200',
-          tag: 'Cruelty-Free',
-          tagClass: 'cruelty-free',
-          category: 'Green Beauty',
-          isNew: true,
-          isPreloved: false
-        },
-        
-        // Page 3
-        {
-          id: 25,
-          name: 'Eco-Friendly Yoga Mat',
-          description: 'Made from natural rubber and cork',
-          price: 38.00,
-          image: '/marketplace/mat.png?height=200&width=200',
-          tag: 'Biodegradable',
-          tagClass: 'low-waste',
-          category: 'Fashion',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 26,
-          name: 'Reusable Produce Bags',
-          description: 'Set of 5 mesh bags for grocery shopping',
-          price: 10.99,
-          originalPrice: 14.99,
-          image: '/marketplace/bags.png?height=200&width=200',
-          tag: 'Plastic-Free',
-          tagClass: 'plastic-free',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 27,
-          name: 'Bamboo Desk Organizer',
-          description: 'Stylish, sustainable office accessory',
-          price: 24.50,
-          image: '/marketplace/organizer.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 28,
-          name: 'Organic Cotton Bedding',
-          description: 'Soft, chemical-free sheets and pillowcases',
-          price: 79.99,
-          originalPrice: 99.99,
-          image: '/marketplace/bedding.png?height=200&width=200',
-          tag: 'Cruelty-Free',
-          tagClass: 'cruelty-free',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 29,
-          name: 'Recycled Plastic Outdoor Rug',
-          description: 'Made from recycled plastic bottles',
-          price: 35.00,
-          image: '/marketplace/rug.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 30,
-          name: 'Compostable Phone Charger',
-          description: 'Biodegradable materials, sustainable design',
-          price: 19.99,
-          originalPrice: 24.99,
-          image: '/marketplace/phonecharger.png?height=200&width=200',
-          tag: 'Biodegradable',
-          tagClass: 'low-waste',
-          category: 'Technology',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 31,
-          name: 'Organic Shampoo Bar',
-          description: 'Zero-waste hair care solution',
-          price: 11.50,
-          image: '/marketplace/shampoobar.png?height=200&width=200',
-          tag: 'Plastic-Free',
-          tagClass: 'plastic-free',
-          category: 'Green Beauty',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 32,
-          name: 'Upcycled Denim Tote',
-          description: 'Handmade from repurposed jeans',
-          price: 29.99,
-          image: '/marketplace/tote.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Fashion',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 33,
-          name: 'Bamboo Bathroom Set',
-          description: 'Sustainable toothbrush holder, soap dish, and more',
-          price: 32.00,
-          originalPrice: 40.00,
-          image: '/marketplace/bambooset.png?height=200&width=200',
-          tag: 'Plastic-Free',
-          tagClass: 'plastic-free',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 34,
-          name: 'Recycled Paper Wall Art',
-          description: 'Handcrafted decorative pieces',
-          price: 45.00,
-          image: '/marketplace/wallart.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Furniture',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 35,
-          name: 'Solar-Powered Desk Lamp',
-          description: 'Energy-efficient lighting solution',
-          price: 28.99,
-          originalPrice: 35.99,
-          image: '/marketplace/lamp.png?height=200&width=200',
-          tag: 'Low Waste',
-          tagClass: 'low-waste',
-          category: 'Technology',
-          isNew: true,
-          isPreloved: false
-        },
-        {
-          id: 36,
-          name: 'Organic Cotton Face Masks',
-          description: 'Reusable, washable, comfortable',
-          price: 15.00,
-          image: '/marketplace/masks.png?height=200&width=200',
-          tag: 'Cruelty-Free',
-          tagClass: 'cruelty-free',
-          category: 'Fashion',
-          isNew: true,
-          isPreloved: false
-        },
-        
-        // Preloved items
-        {
-          id: 101,
-          name: 'Vintage Armchair',
-          description: 'Restored mid-century design',
-          price: 85.00,
-          originalPrice: 150.00,
-          image: '/marketplace/armchair.png?height=200&width=200',
-          tag: 'Upcycled',
-          tagClass: 'low-waste',
-          category: 'Furniture',
-          isNew: false,
-          isPreloved: true
-        },
-        {
-          id: 102,
-          name: 'Retro Coffee Table',
-          description: 'Refurbished 1970s piece',
-          price: 65.30,
-          image: '/marketplace/coffeetable.png?height=200&width=200',
-          tag: 'Refurbished',
-          tagClass: 'plastic-free',
-          category: 'Furniture',
-          isNew: false,
-          isPreloved: true
-        },
-        {
-          id: 103,
-          name: 'Antique Bookshelf',
-          description: 'Restored wooden bookcase',
-          price: 120.00,
-          originalPrice: 180.00,
-          image: '/marketplace/bookshelf.png?height=200&width=200',
-          tag: 'Restored',
-          tagClass: 'cruelty-free',
-          category: 'Furniture',
-          isNew: false,
-          isPreloved: true
-        }
-      ],
+      // allProducts: [
+      //   // Page 1
+      //   {
+      //     id: 1,
+      //     name: 'Bamboo Chair',
+      //     description: 'Sustainable, comfortable bamboo chair',
+      //     price: 27.50,
+      //     image: '/marketplace/bamboochair.png?height=200&width=200',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 2,
+      //     name: 'Aloe Facial Toner',
+      //     description: 'Organic aloe toner',
+      //     price: 17.90,
+      //     originalPrice: 24.00,
+      //     image: '/marketplace/aloetoner.png?height=200&width=200',
+      //     tag: 'Cruelty-Free',
+      //     tagClass: 'cruelty-free',
+      //     category: 'Green Beauty',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 3,
+      //     name: 'Terracotta Side Table',
+      //     description: 'Handcrafted from raw terracotta',
+      //     price: 30.00,
+      //     image: '/marketplace/terracotta.png?height=200&width=200',
+      //     tag: 'Plastic-Free',
+      //     tagClass: 'plastic-free',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 4,
+      //     name: 'BeesWax Food Wraps',
+      //     description: 'Biodegradable wraps',
+      //     price: 8.20,
+      //     originalPrice: 10.90,
+      //     image: '/marketplace/beeswax.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Green Beauty',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 5,
+      //     name: 'Reusable Cotton Rounds',
+      //     description: 'Washable cotton rounds',
+      //     price: 4.50,
+      //     image: '/marketplace/cottonrounds.png?height=200&width=200',
+      //     category: 'Green Beauty',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 6,
+      //     name: 'Vegan Leather Sleeve',
+      //     description: 'Cruelty-free vegan leather',
+      //     price: 28.80,
+      //     originalPrice: 35.40,
+      //     image: '/marketplace/vegan.png?height=200&width=200',
+      //     tag: 'Cruelty-Free',
+      //     tagClass: 'cruelty-free',
+      //     category: 'Fashion',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 7,
+      //     name: 'Coconut Face Bar',
+      //     description: 'Detoxifying facial cleanser',
+      //     price: 12.00,
+      //     image: '/marketplace/coconut.png?height=200&width=200',
+      //     tag: 'Plastic-Free',
+      //     tagClass: 'plastic-free',
+      //     category: 'Green Beauty',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 8,
+      //     name: 'Glass Storage Jars',
+      //     description: 'Stylish crate chest',
+      //     price: 7.40,
+      //     originalPrice: 9.80,
+      //     image: '/marketplace/glass.png?height=200&width=200',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 9,
+      //     name: 'Bamboo Board',
+      //     description: 'Sturdy, bamboo fabric',
+      //     price: 7.80,
+      //     image: '/marketplace/bamboo.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Fashion',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 10,
+      //     name: 'Silk-Free Scarf',
+      //     description: 'Organic cotton, natural dye',
+      //     price: 16.30,
+      //     originalPrice: 20.00,
+      //     image: '/marketplace/scarf.png?height=200&width=200',
+      //     tag: 'Cruelty-Free',
+      //     tagClass: 'cruelty-free',
+      //     category: 'Fashion',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 11,
+      //     name: 'WoodTone Charger',
+      //     description: 'Wireless charging pad',
+      //     price: 15.20,
+      //     image: '/marketplace/woodtone.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Technology',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 12,
+      //     name: 'Wooden Blocks',
+      //     description: 'Sustainable, non-toxic wood',
+      //     price: 13.50,
+      //     originalPrice: 17.20,
+      //     image: '/marketplace/blocks.png?height=200&width=200',
+      //     tag: 'Plastic-Free',
+      //     tagClass: 'plastic-free',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+
+      //   // Page 2
+      //   {
+      //     id: 13,
+      //     name: 'Bamboo Toothbrush',
+      //     description: 'Biodegradable handle, soft bristles',
+      //     price: 3.99,
+      //     image: '/marketplace/toothbrush.png?height=200&width=200',
+      //     tag: 'Plastic-Free',
+      //     tagClass: 'plastic-free',
+      //     category: 'Green Beauty',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 14,
+      //     name: 'Hemp Backpack',
+      //     description: 'Durable, sustainable hemp material',
+      //     price: 45.00,
+      //     originalPrice: 60.00,
+      //     image: '/marketplace/backpack.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Fashion',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 15,
+      //     name: 'Solar Power Bank',
+      //     description: 'Charge your devices with solar energy',
+      //     price: 29.99,
+      //     image: '/marketplace/powerbank.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Technology',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 16,
+      //     name: 'Recycled Paper Notebook',
+      //     description: '100% recycled paper, soy-based ink',
+      //     price: 8.50,
+      //     image: '/marketplace/notebook.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 17,
+      //     name: 'Organic Cotton T-Shirt',
+      //     description: 'Soft, breathable organic cotton',
+      //     price: 19.99,
+      //     originalPrice: 25.00,
+      //     image: '/marketplace/organicshirt.png?height=200&width=200',
+      //     tag: 'Cruelty-Free',
+      //     tagClass: 'cruelty-free',
+      //     category: 'Fashion',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 18,
+      //     name: 'Stainless Steel Water Bottle',
+      //     description: 'Durable, reusable, BPA-free',
+      //     price: 18.50,
+      //     image: '/marketplace/waterbottle.png?height=200&width=200',
+      //     tag: 'Plastic-Free',
+      //     tagClass: 'plastic-free',
+      //     category: 'Green Beauty',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 19,
+      //     name: 'Recycled Glass Vase',
+      //     description: 'Handcrafted from recycled glass',
+      //     price: 22.00,
+      //     originalPrice: 28.00,
+      //     image: '/marketplace/vase.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 20,
+      //     name: 'Biodegradable Phone Case',
+      //     description: 'Made from plant-based materials',
+      //     price: 14.99,
+      //     image: '/marketplace/phonecase.png?height=200&width=200',
+      //     tag: 'Biodegradable',
+      //     tagClass: 'low-waste',
+      //     category: 'Technology',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 21,
+      //     name: 'Organic Lip Balm Set',
+      //     description: 'Natural ingredients, plastic-free packaging',
+      //     price: 9.99,
+      //     image: '/marketplace/lipbalm.png?height=200&width=200',
+      //     tag: 'Cruelty-Free',
+      //     tagClass: 'cruelty-free',
+      //     category: 'Green Beauty',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 22,
+      //     name: 'Bamboo Cutlery Set',
+      //     description: 'Portable, reusable utensils',
+      //     price: 12.50,
+      //     originalPrice: 15.00,
+      //     image: '/marketplace/cutlery.png?height=200&width=200',
+      //     tag: 'Plastic-Free',
+      //     tagClass: 'plastic-free',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 23,
+      //     name: 'Recycled Wool Blanket',
+      //     description: 'Cozy, sustainable home essential',
+      //     price: 49.99,
+      //     image: '/marketplace/blanket.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 24,
+      //     name: 'Natural Deodorant',
+      //     description: 'Aluminum-free, compostable packaging',
+      //     price: 8.99,
+      //     originalPrice: 11.99,
+      //     image: '/marketplace/deo.png?height=200&width=200',
+      //     tag: 'Cruelty-Free',
+      //     tagClass: 'cruelty-free',
+      //     category: 'Green Beauty',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+
+      //   // Page 3
+      //   {
+      //     id: 25,
+      //     name: 'Eco-Friendly Yoga Mat',
+      //     description: 'Made from natural rubber and cork',
+      //     price: 38.00,
+      //     image: '/marketplace/mat.png?height=200&width=200',
+      //     tag: 'Biodegradable',
+      //     tagClass: 'low-waste',
+      //     category: 'Fashion',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 26,
+      //     name: 'Reusable Produce Bags',
+      //     description: 'Set of 5 mesh bags for grocery shopping',
+      //     price: 10.99,
+      //     originalPrice: 14.99,
+      //     image: '/marketplace/bags.png?height=200&width=200',
+      //     tag: 'Plastic-Free',
+      //     tagClass: 'plastic-free',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 27,
+      //     name: 'Bamboo Desk Organizer',
+      //     description: 'Stylish, sustainable office accessory',
+      //     price: 24.50,
+      //     image: '/marketplace/organizer.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 28,
+      //     name: 'Organic Cotton Bedding',
+      //     description: 'Soft, chemical-free sheets and pillowcases',
+      //     price: 79.99,
+      //     originalPrice: 99.99,
+      //     image: '/marketplace/bedding.png?height=200&width=200',
+      //     tag: 'Cruelty-Free',
+      //     tagClass: 'cruelty-free',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 29,
+      //     name: 'Recycled Plastic Outdoor Rug',
+      //     description: 'Made from recycled plastic bottles',
+      //     price: 35.00,
+      //     image: '/marketplace/rug.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 30,
+      //     name: 'Compostable Phone Charger',
+      //     description: 'Biodegradable materials, sustainable design',
+      //     price: 19.99,
+      //     originalPrice: 24.99,
+      //     image: '/marketplace/phonecharger.png?height=200&width=200',
+      //     tag: 'Biodegradable',
+      //     tagClass: 'low-waste',
+      //     category: 'Technology',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 31,
+      //     name: 'Organic Shampoo Bar',
+      //     description: 'Zero-waste hair care solution',
+      //     price: 11.50,
+      //     image: '/marketplace/shampoobar.png?height=200&width=200',
+      //     tag: 'Plastic-Free',
+      //     tagClass: 'plastic-free',
+      //     category: 'Green Beauty',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 32,
+      //     name: 'Upcycled Denim Tote',
+      //     description: 'Handmade from repurposed jeans',
+      //     price: 29.99,
+      //     image: '/marketplace/tote.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Fashion',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 33,
+      //     name: 'Bamboo Bathroom Set',
+      //     description: 'Sustainable toothbrush holder, soap dish, and more',
+      //     price: 32.00,
+      //     originalPrice: 40.00,
+      //     image: '/marketplace/bambooset.png?height=200&width=200',
+      //     tag: 'Plastic-Free',
+      //     tagClass: 'plastic-free',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 34,
+      //     name: 'Recycled Paper Wall Art',
+      //     description: 'Handcrafted decorative pieces',
+      //     price: 45.00,
+      //     image: '/marketplace/wallart.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Furniture',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 35,
+      //     name: 'Solar-Powered Desk Lamp',
+      //     description: 'Energy-efficient lighting solution',
+      //     price: 28.99,
+      //     originalPrice: 35.99,
+      //     image: '/marketplace/lamp.png?height=200&width=200',
+      //     tag: 'Low Waste',
+      //     tagClass: 'low-waste',
+      //     category: 'Technology',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+      //   {
+      //     id: 36,
+      //     name: 'Organic Cotton Face Masks',
+      //     description: 'Reusable, washable, comfortable',
+      //     price: 15.00,
+      //     image: '/marketplace/masks.png?height=200&width=200',
+      //     tag: 'Cruelty-Free',
+      //     tagClass: 'cruelty-free',
+      //     category: 'Fashion',
+      //     isNew: true,
+      //     isPreloved: false
+      //   },
+
+      //   // Preloved items
+      //   {
+      //     id: 101,
+      //     name: 'Vintage Armchair',
+      //     description: 'Restored mid-century design',
+      //     price: 85.00,
+      //     originalPrice: 150.00,
+      //     image: '/marketplace/armchair.png?height=200&width=200',
+      //     tag: 'Upcycled',
+      //     tagClass: 'low-waste',
+      //     category: 'Furniture',
+      //     isNew: false,
+      //     isPreloved: true
+      //   },
+      //   {
+      //     id: 102,
+      //     name: 'Retro Coffee Table',
+      //     description: 'Refurbished 1970s piece',
+      //     price: 65.30,
+      //     image: '/marketplace/coffeetable.png?height=200&width=200',
+      //     tag: 'Refurbished',
+      //     tagClass: 'plastic-free',
+      //     category: 'Furniture',
+      //     isNew: false,
+      //     isPreloved: true
+      //   },
+      //   {
+      //     id: 103,
+      //     name: 'Antique Bookshelf',
+      //     description: 'Restored wooden bookcase',
+      //     price: 120.00,
+      //     originalPrice: 180.00,
+      //     image: '/marketplace/bookshelf.png?height=200&width=200',
+      //     tag: 'Restored',
+      //     tagClass: 'cruelty-free',
+      //     category: 'Furniture',
+      //     isNew: false,
+      //     isPreloved: true
+      //   }
+      // ],
+      allProducts: [],
+      prelovedProducts: [],
+      isLoading: false,
+      error: null,
       prelovedProducts: []
     }
   },
+
+
   computed: {
+
     filteredProducts() {
       let result = [...this.allProducts];
-      
+
       // Filter by tab
       if (this.activeTab === 'new') {
         result = result.filter(product => product.isNew);
       } else if (this.activeTab === 'preloved') {
         result = result.filter(product => product.isPreloved);
       }
-      
+
       // Apply category filters
       if (this.filters.categories.length > 0) {
-        result = result.filter(product => 
+        result = result.filter(product =>
           this.filters.categories.some(cat => product.category.includes(cat))
         );
       }
-      
+
       // Apply price filter
-      result = result.filter(product => 
+      result = result.filter(product =>
         product.price >= this.filters.minPrice && product.price <= this.filters.maxPrice
       );
-      
+
       // Apply sorting
       if (this.sortBy === 'price-low') {
         result.sort((a, b) => a.price - b.price);
@@ -801,7 +798,7 @@ export default {
       } else if (this.sortBy === 'name') {
         result.sort((a, b) => a.name.localeCompare(b.name));
       }
-      
+
       return result;
     },
     paginatedProducts() {
@@ -814,6 +811,69 @@ export default {
     }
   },
   methods: {
+    async fetchProducts() {
+      this.isLoading = true
+      this.error = null
+
+      try {
+        // Fetch products from your API
+        console.log('Fetching products from API...');
+
+        const response = await fetch('https://personal-o2kymv2n.outsystemscloud.com/SustainaMart/rest/v1/allproducts/')
+        if (!response.ok) throw new Error('Failed to fetch products')
+
+        // Get the JSON data
+        const responseData = await response.json();
+
+        // Extract the Products array - THIS IS THE CRUCIAL FIX
+        const products = responseData.Products || [];
+        console.log('Products:', products);
+
+        if (!Array.isArray(products)) {
+          throw new Error('Products data is not an array');
+        }
+        console.log('Products array length:', products.length);
+
+
+        this.allProducts = products.map(product => ({
+          // Map your API fields to your component's expected structure
+          id: product.productId,
+          name: product.Name,
+          description: product.Description,
+          price: product.Price,
+          image: product.ImageURL, // Or process with Supabase if needed
+          category: product.Category,
+          isNew: product.Condition === 'New',
+          isPreloved: product.Condition === 'Refurbished',
+          tag: product.TagClass ? product.TagClass.split('-').join(' ') : null,
+          tagClass: product.TagClass
+        }));
+
+
+        //UNDER DEVELOPMENT 
+        // this.allProducts = await Promise.all(
+        //   products.map(async product => {
+        //     const imageUrl = product.ImageURL
+        //       ? (await supabase.storage.from('product-images').getPublicUrl(product.ImageURL)).data.publicUrl
+        //       : product.ImageURL;
+
+        //     return {
+        //       id: product.productId,
+        //       name: product.Name,
+        //       // ... other fields
+        //       image: imageUrl
+        //     };
+        //   })
+        // );
+
+      } catch (err) {
+        this.error = err.message
+        console.error('Error fetching products:', err)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     changePage(page) {
       this.currentPage = page;
       // Scroll to top of products section
@@ -832,7 +892,7 @@ export default {
     applyPriceFilter() {
       // Convert slider value to price range
       this.filters.minPrice = 0;
-      this.filters.maxPrice = this.priceRange * 2; // Max price of 200
+      this.filters.maxPrice = this.priceRange * 10; // Max price of 200
     },
     applyFilters() {
       this.currentPage = 1;
@@ -843,7 +903,7 @@ export default {
     addToCart(product) {
       // Check if product is already in cart
       const existingProductIndex = this.cart.findIndex(item => item.id === product.id);
-      
+
       if (existingProductIndex !== -1) {
         // Update quantity if product already exists in cart
         const updatedCart = [...this.cart];
@@ -855,10 +915,10 @@ export default {
           ...product,
           quantity: 1
         };
-        
+
         this.cart.push(cartItem);
       }
-      
+
       // Show notification or update UI
       alert(`${product.name} added to cart!`);
     },
@@ -866,7 +926,7 @@ export default {
       // In a real app, this would navigate to the product detail page
       // For now, we'll just show an alert
       alert(`Viewing details for product ID: ${productId}`);
-      
+
       // In a real app with Vue Router, you would use:
       // this.$router.push(`/product/${productId}`);
     }
@@ -878,7 +938,22 @@ export default {
 }
 </script>
 
+<script setup>
+import { 
+  User as UserIcon, 
+  Search as SearchIcon, 
+  Heart as HeartIcon, 
+  ShoppingCart as ShoppingCartIcon,
+  ChevronRight as ChevronRightIcon,
+  Trophy as TrophyIcon,
+  ShieldCheck as ShieldCheckIcon,
+  Truck as TruckIcon,
+  Headphones as HeadphonesIcon
+} from 'lucide-vue-next'
+</script>
+
 <style scoped>
+
 /* Reset and Base Styles */
 * {
   margin: 0;
@@ -944,7 +1019,8 @@ button {
   transition: color 0.3s;
 }
 
-.main-nav a:hover, .main-nav a.active {
+.main-nav a:hover,
+.main-nav a.active {
   color: #704116;
 }
 
@@ -1009,30 +1085,64 @@ button {
 }
 
 /* Hero Banner */
-.hero-banner {
-  background-color: #f9f1e7;
-  padding: 60px 0;
-  text-align: center;
-  color: #242424;
-  background-image: url('/marketplace/headerbackground.png?height=300&width=1200');
+.hero-section {
+  position: relative;
+  height: 200px;
+  background-image: url('rectangle-1.png');
   background-size: cover;
   background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.hero-banner h1 {
-  font-size: 36px;
-  margin-bottom: 10px;
-  color: #242424;
+.hero-blur-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(5px);
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 10;
+  position: relative; /* Ensures content stays above the blur overlay */
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #704116;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); /* Optional: adds slight shadow to make text more readable */
 }
 
 .breadcrumb {
-  font-size: 14px;
-  color: #242424;
+  display: flex;
+  align-items: center;
+  color: #704116;
+  border-radius: 1rem;
 }
 
-.breadcrumb a {
-  color: #242424;
-  opacity: 0.8;
+.breadcrumb-link {
+  font-size: 0.875rem;
+}
+
+.breadcrumb-icon {
+  width: 1rem;
+  height: 1rem;
+  margin: 0 0.5rem;
+}
+
+.breadcrumb-current {
+  font-size: 0.875rem;
 }
 
 /* Filter Bar */
@@ -1360,7 +1470,8 @@ button {
   cursor: not-allowed;
 }
 
-.page-button.prev, .page-button.next {
+.page-button.prev,
+.page-button.next {
   min-width: 60px;
 }
 
@@ -1510,16 +1621,16 @@ button {
   .content-grid {
     grid-template-columns: 200px 1fr;
   }
-  
+
   .features-section {
     grid-template-columns: repeat(2, 1fr);
     gap: 30px;
   }
-  
+
   .footer-content {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1530,26 +1641,26 @@ button {
     flex-direction: column;
     gap: 15px;
   }
-  
+
   .main-nav ul {
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .filter-bar {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
   }
-  
+
   .content-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .footer-content {
     grid-template-columns: 1fr;
   }
@@ -1559,7 +1670,7 @@ button {
   .product-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .features-section {
     grid-template-columns: 1fr;
   }
