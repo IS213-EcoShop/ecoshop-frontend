@@ -64,18 +64,6 @@
             </div>
 
             <div class="filter-section">
-              <h3>Others</h3>
-              <div class="filter-options">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="filters.newItems"> New Items
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="filters.prelovedItems"> Preloved Items
-                </label>
-              </div>
-            </div>
-
-            <div class="filter-section">
               <h3>Price Range</h3>
               <div class="price-slider">
                 <input type="range" min="0" max="100" v-model="priceRange" class="slider" @change="applyPriceFilter">
@@ -95,17 +83,6 @@
 
           <!-- Products Section -->
           <div class="products-section">
-            <!-- Tabs -->
-            <div class="product-tabs">
-              <button class="tab-button" :class="{ active: activeTab === 'new' }" @click="setActiveTab('new')">
-                New Finds
-              </button>
-              <button class="tab-button" :class="{ active: activeTab === 'preloved' }"
-                @click="setActiveTab('preloved')">
-                Preloved Gems
-              </button>
-            </div>
-
             <!-- Product Grid -->
             <div class="product-grid">
               <div v-for="product in paginatedProducts" :key="product.id" class="product-card">
@@ -114,9 +91,6 @@
                   <span v-if="product.tag" class="product-tag" :class="product.tagClass">
                     {{ product.tag }}
                   </span>
-                  <button class="hover-cart-btn" @click.stop="addToCart(product)">Add to cart</button>
-                  <a :href="`/product/${product.id}`" class="product-link"
-                    @click.prevent="viewProductDetails(product.id)"></a>
                 </div>
                 <div class="product-info">
                   <a :href="`/product/${product.id}`" class="product-title-link"
@@ -128,6 +102,16 @@
                     <span class="current-price">${{ product.price.toFixed(2) }}</span>
                     <span v-if="product.originalPrice" class="original-price">${{ product.originalPrice.toFixed(2)
                       }}</span>
+                  </div>
+                  
+                  <!-- Quantity Selector and Add to Cart -->
+                  <div class="quantity-cart-container">
+                    <div class="quantity-selector">
+                      <button @click="decrementQuantity(product.id)" class="quantity-btn">-</button>
+                      <span class="quantity-value">{{ productQuantities[product.id] || 1 }}</span>
+                      <button @click="incrementQuantity(product.id)" class="quantity-btn">+</button>
+                    </div>
+                    <button @click="addToCart(product)" class="add-to-cart-btn">Add to Cart</button>
                   </div>
                 </div>
               </div>
@@ -186,50 +170,19 @@
       </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="container">
-        <div class="footer-content">
-          <div class="footer-column">
-            <h3 class="footer-logo">SustainaMart</h3>
-            <address>
-              2 Bayfront Avenue,<br>
-              Unit #1-41, The Shoppes at Marina Bay Sands,<br>
-              Singapore 018972, Singapore
-            </address>
+    <!-- Cart Notification Popup -->
+    <div class="notification-popup" v-if="showNotification" :class="{ 'show': showNotification }">
+      <div class="notification-content">
+        <h3 class="notification-title">Item Added to Cart <button class="close-notification" @click="hideNotification">×</button></h3>
+        <div class="notification-body">
+          <div class="notification-icon-container">
+            <check-circle-icon class="notification-icon" />
           </div>
-          <div class="footer-column">
-            <h4>Links</h4>
-            <ul>
-              <li><a href="#">About Us</a></li>
-              <li><a href="#">Marketplace</a></li>
-              <li><a href="#">Trade-in Service</a></li>
-              <li><a href="#">Sustainability Challenges</a></li>
-              <li><a href="#">Rewards</a></li>
-            </ul>
-          </div>
-          <div class="footer-column">
-            <h4>Help</h4>
-            <ul>
-              <li><a href="#">Payment Options</a></li>
-              <li><a href="#">Returns</a></li>
-              <li><a href="#">Privacy Policies</a></li>
-              <li><a href="#">FAQs</a></li>
-            </ul>
-          </div>
-          <div class="footer-column">
-            <h4>Newsletter</h4>
-            <div class="newsletter-form">
-              <input type="email" placeholder="Enter Your Email Address" class="newsletter-input">
-              <button class="subscribe-btn">SUBSCRIBE</button>
-            </div>
-          </div>
+          <p class="notification-message">{{ notificationMessage }}</p>
         </div>
-        <div class="copyright">
-          <p>© 2025 SustainaMart. All rights reserved</p>
-        </div>
+        <button class="view-cart-btn" @click="navigateToCart">View Cart</button>
       </div>
-    </footer>
+    </div>
   </div>
 </template>
 
@@ -253,530 +206,31 @@ export default {
     console.log('MARKETPLACE - mounted') // Should appear last
   },
   data() {
-
     return {
       priceRange: [0, 1000],
       cart: [],
       currentPage: 1,
       itemsPerPage: 12,
-      activeTab: 'new',
       sortBy: 'default',
       filters: {
         categories: [],
-        newItems: true,
-        prelovedItems: false,
         minPrice: 0,
         maxPrice: 1000
       },
-      // allProducts: [
-      //   // Page 1
-      //   {
-      //     id: 1,
-      //     name: 'Bamboo Chair',
-      //     description: 'Sustainable, comfortable bamboo chair',
-      //     price: 27.50,
-      //     image: '/marketplace/bamboochair.png?height=200&width=200',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 2,
-      //     name: 'Aloe Facial Toner',
-      //     description: 'Organic aloe toner',
-      //     price: 17.90,
-      //     originalPrice: 24.00,
-      //     image: '/marketplace/aloetoner.png?height=200&width=200',
-      //     tag: 'Cruelty-Free',
-      //     tagClass: 'cruelty-free',
-      //     category: 'Green Beauty',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 3,
-      //     name: 'Terracotta Side Table',
-      //     description: 'Handcrafted from raw terracotta',
-      //     price: 30.00,
-      //     image: '/marketplace/terracotta.png?height=200&width=200',
-      //     tag: 'Plastic-Free',
-      //     tagClass: 'plastic-free',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 4,
-      //     name: 'BeesWax Food Wraps',
-      //     description: 'Biodegradable wraps',
-      //     price: 8.20,
-      //     originalPrice: 10.90,
-      //     image: '/marketplace/beeswax.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Green Beauty',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 5,
-      //     name: 'Reusable Cotton Rounds',
-      //     description: 'Washable cotton rounds',
-      //     price: 4.50,
-      //     image: '/marketplace/cottonrounds.png?height=200&width=200',
-      //     category: 'Green Beauty',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 6,
-      //     name: 'Vegan Leather Sleeve',
-      //     description: 'Cruelty-free vegan leather',
-      //     price: 28.80,
-      //     originalPrice: 35.40,
-      //     image: '/marketplace/vegan.png?height=200&width=200',
-      //     tag: 'Cruelty-Free',
-      //     tagClass: 'cruelty-free',
-      //     category: 'Fashion',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 7,
-      //     name: 'Coconut Face Bar',
-      //     description: 'Detoxifying facial cleanser',
-      //     price: 12.00,
-      //     image: '/marketplace/coconut.png?height=200&width=200',
-      //     tag: 'Plastic-Free',
-      //     tagClass: 'plastic-free',
-      //     category: 'Green Beauty',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 8,
-      //     name: 'Glass Storage Jars',
-      //     description: 'Stylish crate chest',
-      //     price: 7.40,
-      //     originalPrice: 9.80,
-      //     image: '/marketplace/glass.png?height=200&width=200',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 9,
-      //     name: 'Bamboo Board',
-      //     description: 'Sturdy, bamboo fabric',
-      //     price: 7.80,
-      //     image: '/marketplace/bamboo.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Fashion',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 10,
-      //     name: 'Silk-Free Scarf',
-      //     description: 'Organic cotton, natural dye',
-      //     price: 16.30,
-      //     originalPrice: 20.00,
-      //     image: '/marketplace/scarf.png?height=200&width=200',
-      //     tag: 'Cruelty-Free',
-      //     tagClass: 'cruelty-free',
-      //     category: 'Fashion',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 11,
-      //     name: 'WoodTone Charger',
-      //     description: 'Wireless charging pad',
-      //     price: 15.20,
-      //     image: '/marketplace/woodtone.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Technology',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 12,
-      //     name: 'Wooden Blocks',
-      //     description: 'Sustainable, non-toxic wood',
-      //     price: 13.50,
-      //     originalPrice: 17.20,
-      //     image: '/marketplace/blocks.png?height=200&width=200',
-      //     tag: 'Plastic-Free',
-      //     tagClass: 'plastic-free',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-
-      //   // Page 2
-      //   {
-      //     id: 13,
-      //     name: 'Bamboo Toothbrush',
-      //     description: 'Biodegradable handle, soft bristles',
-      //     price: 3.99,
-      //     image: '/marketplace/toothbrush.png?height=200&width=200',
-      //     tag: 'Plastic-Free',
-      //     tagClass: 'plastic-free',
-      //     category: 'Green Beauty',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 14,
-      //     name: 'Hemp Backpack',
-      //     description: 'Durable, sustainable hemp material',
-      //     price: 45.00,
-      //     originalPrice: 60.00,
-      //     image: '/marketplace/backpack.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Fashion',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 15,
-      //     name: 'Solar Power Bank',
-      //     description: 'Charge your devices with solar energy',
-      //     price: 29.99,
-      //     image: '/marketplace/powerbank.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Technology',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 16,
-      //     name: 'Recycled Paper Notebook',
-      //     description: '100% recycled paper, soy-based ink',
-      //     price: 8.50,
-      //     image: '/marketplace/notebook.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 17,
-      //     name: 'Organic Cotton T-Shirt',
-      //     description: 'Soft, breathable organic cotton',
-      //     price: 19.99,
-      //     originalPrice: 25.00,
-      //     image: '/marketplace/organicshirt.png?height=200&width=200',
-      //     tag: 'Cruelty-Free',
-      //     tagClass: 'cruelty-free',
-      //     category: 'Fashion',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 18,
-      //     name: 'Stainless Steel Water Bottle',
-      //     description: 'Durable, reusable, BPA-free',
-      //     price: 18.50,
-      //     image: '/marketplace/waterbottle.png?height=200&width=200',
-      //     tag: 'Plastic-Free',
-      //     tagClass: 'plastic-free',
-      //     category: 'Green Beauty',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 19,
-      //     name: 'Recycled Glass Vase',
-      //     description: 'Handcrafted from recycled glass',
-      //     price: 22.00,
-      //     originalPrice: 28.00,
-      //     image: '/marketplace/vase.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 20,
-      //     name: 'Biodegradable Phone Case',
-      //     description: 'Made from plant-based materials',
-      //     price: 14.99,
-      //     image: '/marketplace/phonecase.png?height=200&width=200',
-      //     tag: 'Biodegradable',
-      //     tagClass: 'low-waste',
-      //     category: 'Technology',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 21,
-      //     name: 'Organic Lip Balm Set',
-      //     description: 'Natural ingredients, plastic-free packaging',
-      //     price: 9.99,
-      //     image: '/marketplace/lipbalm.png?height=200&width=200',
-      //     tag: 'Cruelty-Free',
-      //     tagClass: 'cruelty-free',
-      //     category: 'Green Beauty',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 22,
-      //     name: 'Bamboo Cutlery Set',
-      //     description: 'Portable, reusable utensils',
-      //     price: 12.50,
-      //     originalPrice: 15.00,
-      //     image: '/marketplace/cutlery.png?height=200&width=200',
-      //     tag: 'Plastic-Free',
-      //     tagClass: 'plastic-free',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 23,
-      //     name: 'Recycled Wool Blanket',
-      //     description: 'Cozy, sustainable home essential',
-      //     price: 49.99,
-      //     image: '/marketplace/blanket.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 24,
-      //     name: 'Natural Deodorant',
-      //     description: 'Aluminum-free, compostable packaging',
-      //     price: 8.99,
-      //     originalPrice: 11.99,
-      //     image: '/marketplace/deo.png?height=200&width=200',
-      //     tag: 'Cruelty-Free',
-      //     tagClass: 'cruelty-free',
-      //     category: 'Green Beauty',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-
-      //   // Page 3
-      //   {
-      //     id: 25,
-      //     name: 'Eco-Friendly Yoga Mat',
-      //     description: 'Made from natural rubber and cork',
-      //     price: 38.00,
-      //     image: '/marketplace/mat.png?height=200&width=200',
-      //     tag: 'Biodegradable',
-      //     tagClass: 'low-waste',
-      //     category: 'Fashion',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 26,
-      //     name: 'Reusable Produce Bags',
-      //     description: 'Set of 5 mesh bags for grocery shopping',
-      //     price: 10.99,
-      //     originalPrice: 14.99,
-      //     image: '/marketplace/bags.png?height=200&width=200',
-      //     tag: 'Plastic-Free',
-      //     tagClass: 'plastic-free',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 27,
-      //     name: 'Bamboo Desk Organizer',
-      //     description: 'Stylish, sustainable office accessory',
-      //     price: 24.50,
-      //     image: '/marketplace/organizer.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 28,
-      //     name: 'Organic Cotton Bedding',
-      //     description: 'Soft, chemical-free sheets and pillowcases',
-      //     price: 79.99,
-      //     originalPrice: 99.99,
-      //     image: '/marketplace/bedding.png?height=200&width=200',
-      //     tag: 'Cruelty-Free',
-      //     tagClass: 'cruelty-free',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 29,
-      //     name: 'Recycled Plastic Outdoor Rug',
-      //     description: 'Made from recycled plastic bottles',
-      //     price: 35.00,
-      //     image: '/marketplace/rug.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 30,
-      //     name: 'Compostable Phone Charger',
-      //     description: 'Biodegradable materials, sustainable design',
-      //     price: 19.99,
-      //     originalPrice: 24.99,
-      //     image: '/marketplace/phonecharger.png?height=200&width=200',
-      //     tag: 'Biodegradable',
-      //     tagClass: 'low-waste',
-      //     category: 'Technology',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 31,
-      //     name: 'Organic Shampoo Bar',
-      //     description: 'Zero-waste hair care solution',
-      //     price: 11.50,
-      //     image: '/marketplace/shampoobar.png?height=200&width=200',
-      //     tag: 'Plastic-Free',
-      //     tagClass: 'plastic-free',
-      //     category: 'Green Beauty',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 32,
-      //     name: 'Upcycled Denim Tote',
-      //     description: 'Handmade from repurposed jeans',
-      //     price: 29.99,
-      //     image: '/marketplace/tote.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Fashion',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 33,
-      //     name: 'Bamboo Bathroom Set',
-      //     description: 'Sustainable toothbrush holder, soap dish, and more',
-      //     price: 32.00,
-      //     originalPrice: 40.00,
-      //     image: '/marketplace/bambooset.png?height=200&width=200',
-      //     tag: 'Plastic-Free',
-      //     tagClass: 'plastic-free',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 34,
-      //     name: 'Recycled Paper Wall Art',
-      //     description: 'Handcrafted decorative pieces',
-      //     price: 45.00,
-      //     image: '/marketplace/wallart.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Furniture',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 35,
-      //     name: 'Solar-Powered Desk Lamp',
-      //     description: 'Energy-efficient lighting solution',
-      //     price: 28.99,
-      //     originalPrice: 35.99,
-      //     image: '/marketplace/lamp.png?height=200&width=200',
-      //     tag: 'Low Waste',
-      //     tagClass: 'low-waste',
-      //     category: 'Technology',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-      //   {
-      //     id: 36,
-      //     name: 'Organic Cotton Face Masks',
-      //     description: 'Reusable, washable, comfortable',
-      //     price: 15.00,
-      //     image: '/marketplace/masks.png?height=200&width=200',
-      //     tag: 'Cruelty-Free',
-      //     tagClass: 'cruelty-free',
-      //     category: 'Fashion',
-      //     isNew: true,
-      //     isPreloved: false
-      //   },
-
-      //   // Preloved items
-      //   {
-      //     id: 101,
-      //     name: 'Vintage Armchair',
-      //     description: 'Restored mid-century design',
-      //     price: 85.00,
-      //     originalPrice: 150.00,
-      //     image: '/marketplace/armchair.png?height=200&width=200',
-      //     tag: 'Upcycled',
-      //     tagClass: 'low-waste',
-      //     category: 'Furniture',
-      //     isNew: false,
-      //     isPreloved: true
-      //   },
-      //   {
-      //     id: 102,
-      //     name: 'Retro Coffee Table',
-      //     description: 'Refurbished 1970s piece',
-      //     price: 65.30,
-      //     image: '/marketplace/coffeetable.png?height=200&width=200',
-      //     tag: 'Refurbished',
-      //     tagClass: 'plastic-free',
-      //     category: 'Furniture',
-      //     isNew: false,
-      //     isPreloved: true
-      //   },
-      //   {
-      //     id: 103,
-      //     name: 'Antique Bookshelf',
-      //     description: 'Restored wooden bookcase',
-      //     price: 120.00,
-      //     originalPrice: 180.00,
-      //     image: '/marketplace/bookshelf.png?height=200&width=200',
-      //     tag: 'Restored',
-      //     tagClass: 'cruelty-free',
-      //     category: 'Furniture',
-      //     isNew: false,
-      //     isPreloved: true
-      //   }
-      // ],
       allProducts: [],
-      prelovedProducts: [],
       isLoading: false,
       error: null,
-      prelovedProducts: []
+      productQuantities: {}, // Store quantities for each product
+      showNotification: false,
+      notificationMessage: '',
+      notificationTimeout: null
     }
   },
 
 
   computed: {
-
     filteredProducts() {
       let result = [...this.allProducts];
-
-      // Filter by tab
-      if (this.activeTab === 'new') {
-        result = result.filter(product => product.isNew);
-      } else if (this.activeTab === 'preloved') {
-        result = result.filter(product => product.isPreloved);
-      }
 
       // Apply category filters
       if (this.filters.categories.length > 0) {
@@ -843,28 +297,16 @@ export default {
           price: product.Price,
           image: product.ImageURL, // Or process with Supabase if needed
           category: product.Category,
-          isNew: product.Condition === 'New',
-          isPreloved: product.Condition === 'Refurbished',
           tag: product.TagClass ? product.TagClass.split('-').join(' ') : null,
           tagClass: product.TagClass
         }));
 
-
-        //UNDER DEVELOPMENT 
-        // this.allProducts = await Promise.all(
-        //   products.map(async product => {
-        //     const imageUrl = product.ImageURL
-        //       ? (await supabase.storage.from('product-images').getPublicUrl(product.ImageURL)).data.publicUrl
-        //       : product.ImageURL;
-
-        //     return {
-        //       id: product.productId,
-        //       name: product.Name,
-        //       // ... other fields
-        //       image: imageUrl
-        //     };
-        //   })
-        // );
+        // Initialize quantities for all products
+        const quantities = {};
+        this.allProducts.forEach(product => {
+          quantities[product.id] = 1;
+        });
+        this.productQuantities = quantities;
 
       } catch (err) {
         this.error = err.message
@@ -882,10 +324,6 @@ export default {
         productsSection.scrollIntoView({ behavior: 'smooth' });
       }
     },
-    setActiveTab(tab) {
-      this.activeTab = tab;
-      this.currentPage = 1;
-    },
     applySort() {
       this.currentPage = 1;
     },
@@ -900,28 +338,92 @@ export default {
     resetPagination() {
       this.currentPage = 1;
     },
+    
+    // Increment quantity for a specific product
+    incrementQuantity(productId) {
+      // Create a new object to ensure reactivity
+      const newQuantities = { ...this.productQuantities };
+      newQuantities[productId] = (newQuantities[productId] || 1) + 1;
+      this.productQuantities = newQuantities;
+      console.log(`Incremented product ${productId} to quantity ${this.productQuantities[productId]}`);
+    },
+    
+    // Decrement quantity for a specific product
+    decrementQuantity(productId) {
+      if ((this.productQuantities[productId] || 1) > 1) {
+        // Create a new object to ensure reactivity
+        const newQuantities = { ...this.productQuantities };
+        newQuantities[productId] = newQuantities[productId] - 1;
+        this.productQuantities = newQuantities;
+        console.log(`Decremented product ${productId} to quantity ${this.productQuantities[productId]}`);
+      }
+    },
+    
+    // Show notification
+    showCartNotification(message) {
+      // Clear any existing timeout
+      if (this.notificationTimeout) {
+        clearTimeout(this.notificationTimeout);
+      }
+      
+      this.notificationMessage = message;
+      this.showNotification = true;
+      
+      // Auto-hide after 3 seconds
+      this.notificationTimeout = setTimeout(() => {
+        this.hideNotification();
+      }, 3000);
+    },
+    
+    // Hide notification
+    hideNotification() {
+      this.showNotification = false;
+    },
+    
+    // Navigate to cart page
+    navigateToCart() {
+      // Hide the notification
+      this.hideNotification();
+      
+      // In a real app with Vue Router, you would use:
+      // this.$router.push('/cart');
+      
+      // For now, we'll just show an alert
+      alert('Navigating to cart page...');
+      
+      // You could also use window.location for a full page navigation:
+      // window.location.href = '/cart';
+    },
+    
+    // Add to cart with quantity
     addToCart(product) {
+      const quantity = this.productQuantities[product.id] || 1;
+      
       // Check if product is already in cart
       const existingProductIndex = this.cart.findIndex(item => item.id === product.id);
 
       if (existingProductIndex !== -1) {
         // Update quantity if product already exists in cart
         const updatedCart = [...this.cart];
-        updatedCart[existingProductIndex].quantity += 1;
+        updatedCart[existingProductIndex].quantity = quantity;
         this.cart = updatedCart;
       } else {
         // Add new product to cart
         const cartItem = {
           ...product,
-          quantity: 1
+          quantity: quantity
         };
 
         this.cart.push(cartItem);
       }
 
-      // Show notification or update UI
-      alert(`${product.name} added to cart!`);
+      // Show notification popup
+      const message = `${quantity} ${product.name}${quantity > 1 ? 's' : ''} ${quantity > 1 ? 'have' : 'has'} been added to your cart successfully!`;
+      this.showCartNotification(message);
+      
+      console.log('Cart updated:', this.cart);
     },
+    
     viewProductDetails(productId) {
       // In a real app, this would navigate to the product detail page
       // For now, we'll just show an alert
@@ -948,12 +450,13 @@ import {
   Trophy as TrophyIcon,
   ShieldCheck as ShieldCheckIcon,
   Truck as TruckIcon,
-  Headphones as HeadphonesIcon
+  Headphones as HeadphonesIcon,
+  CheckCircle as CheckCircleIcon,
+  X as XIcon
 } from 'lucide-vue-next'
 </script>
 
 <style scoped>
-
 /* Reset and Base Styles */
 * {
   margin: 0;
@@ -1284,29 +787,6 @@ button {
   margin-top: 20px;
 }
 
-/* Product Tabs */
-.product-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin-bottom: 20px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.tab-button {
-  padding: 12px;
-  text-align: center;
-  font-weight: 500;
-  background-color: #fff;
-  transition: all 0.3s;
-}
-
-.tab-button.active {
-  background-color: #704116;
-  color: #fff;
-}
-
 /* Product Grid */
 .product-grid {
   display: grid;
@@ -1336,16 +816,6 @@ button {
 }
 
 /* Product Link */
-.product-link {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  cursor: pointer;
-}
-
 .product-title-link {
   display: block;
   color: inherit;
@@ -1356,27 +826,63 @@ button {
   color: #704116;
 }
 
-/* Hover Add to Cart Button */
-.hover-cart-btn {
-  position: absolute;
-  bottom: -50px;
-  left: 0;
-  right: 0;
-  width: 100%;
-  padding: 10px;
+/* Quantity Selector and Add to Cart */
+.quantity-cart-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.quantity-selector {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.quantity-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  z-index: 10; /* Ensure buttons are above product link */
+}
+
+.quantity-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.quantity-value {
+  width: 30px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.add-to-cart-btn {
+  flex: 1;
+  padding: 8px 12px;
   background-color: #704116;
   color: white;
-  border: none;
+  border-radius: 4px;
   font-weight: 500;
-  transition: bottom 0.3s ease;
-  text-align: center;
-  z-index: 2;
+  font-size: 14px;
+  transition: background-color 0.3s;
+  z-index: 10; /* Ensure button is above product link */
 }
 
-.product-image:hover .hover-cart-btn {
-  bottom: 0;
+.add-to-cart-btn:hover {
+  background-color: #5a3412;
 }
 
+/* Product Tag */
 .product-tag {
   position: absolute;
   top: 10px;
@@ -1541,138 +1047,120 @@ button {
   color: #666;
 }
 
-/* Footer */
-.footer {
-  background-color: #704116;
-  color: #fff;
-  padding: 50px 0 20px;
+/* Notification Popup */
+.notification-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  max-width: 450px;
+  width: 90%;
+  overflow: hidden;
 }
 
-.footer-content {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 30px;
-  margin-bottom: 30px;
-}
-
-.footer-logo {
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 15px;
-}
-
-.footer-column h4 {
-  font-size: 18px;
-  margin-bottom: 20px;
-  font-weight: 600;
-}
-
-.footer-column ul {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.footer-column a {
-  font-size: 14px;
-  opacity: 0.8;
-  transition: opacity 0.3s;
-}
-
-.footer-column a:hover {
+.notification-popup.show {
   opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
-.newsletter-form {
+.notification-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  padding: 0;
 }
 
-.newsletter-input {
-  padding: 10px;
-  border: none;
-  border-radius: 4px;
-}
-
-.subscribe-btn {
-  padding: 10px;
-  background-color: #fff;
-  color: #704116;
-  border-radius: 4px;
+.notification-title {
+  font-size: 18px;
   font-weight: 600;
+  color: #704116;
+  margin: 0;
+  padding: 15px 20px;
+  background-color: #f9f1e7;
+  border-bottom: 1px solid rgba(112, 65, 22, 0.1);
+  position: relative;
+}
+
+.notification-body {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+}
+
+.notification-icon-container {
+  width: 60px;
+  height: 60px;
+  background-color: rgba(46, 193, 172, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20px;
+}
+
+.notification-icon {
+  color: #2ec1ac;
+  width: 30px;
+  height: 30px;
+}
+
+.notification-message {
+  font-size: 16px;
+  color: #333;
+  margin: 0;
+  flex: 1;
+}
+
+.close-notification {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  color: #704116;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+}
+
+.view-cart-btn {
+  background-color: #704116;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  font-weight: 500;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 0 20px 20px;
+  border-radius: 4px;
   transition: background-color 0.3s;
+  width: calc(100% - 40px);
 }
 
-.subscribe-btn:hover {
-  background-color: #f0f0f0;
-}
-
-.copyright {
-  text-align: center;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-/* Responsive Styles */
-@media (max-width: 1024px) {
-  .content-grid {
-    grid-template-columns: 200px 1fr;
-  }
-
-  .features-section {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 30px;
-  }
-
-  .footer-content {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .product-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .header-container {
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .main-nav ul {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .filter-bar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-
-  .content-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .product-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .footer-content {
-    grid-template-columns: 1fr;
-  }
+.view-cart-btn:hover {
+  background-color: #5a3412;
 }
 
 @media (max-width: 480px) {
-  .product-grid {
-    grid-template-columns: 1fr;
+  .notification-popup {
+    width: 95%;
   }
-
-  .features-section {
-    grid-template-columns: 1fr;
+  
+  .notification-body {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .notification-icon-container {
+    margin-right: 0;
+    margin-bottom: 15px;
   }
 }
 </style>
