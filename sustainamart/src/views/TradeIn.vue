@@ -1,27 +1,28 @@
 <template>
   <div class="trade-in-page">
-    \
-    <!-- Hero Banner - Reverted to original light color -->
-    <div class="hero-banner" style="background-image: url('/marketplace/headerbackground.png?height=300&width=1200')">
-      <div class="container">
-        <h2 class="hero-title" style="color: #5D3A1A;">Trade-In Service</h2>
-        <div class="breadcrumb" style="color: #5D3A1A;">
-          <span>Home</span>
-          <span class="separator">›</span>
-          <span class="current">Trade-In Service</span>
+    <!-- Updated hero section without any effects -->
+    <div class="hero-section">
+      <!-- Removed the overlay div completely -->
+      <div class="container hero-content">
+        <h2 class="hero-title">Trade-In Service</h2>
+        <div class="breadcrumb">
+          <a href="/" class="breadcrumb-link">Home</a>
+          <ChevronRightIcon class="breadcrumb-icon" />
+          <span class="breadcrumb-current">Trade-In Service</span>
         </div>
       </div>
     </div>
 
     <div class="container">
       <div class="content-wrapper">
-        <!-- Tabs for Form and Status -->
+        <!-- Tabs for Form and Status - Improved tab design -->
         <div class="tabs">
           <button 
             class="tab-btn" 
             :class="{ active: activeTab === 'submission' }" 
             @click="activeTab = 'submission'"
           >
+            <FileTextIcon size="18" class="tab-icon" />
             Submit New Trade-In
           </button>
           <button 
@@ -29,18 +30,19 @@
             :class="{ active: activeTab === 'status' }" 
             @click="activeTab = 'status'"
           >
+            <ClipboardListIcon size="18" class="tab-icon" />
             Trade-In Status
           </button>
         </div>
 
-        <!-- Submission Form -->
+        <!-- Submission Form - Enhanced styling -->
         <div v-if="activeTab === 'submission'" class="submission-form">
-          <h3>Submit Your Item for Trade-In</h3>
+          <h3 class="brown-title">Submit Your Item for Trade-In</h3>
           <p>Fill in the details below and upload clear photos of your item for quality assessment.</p>
           
           <form @submit.prevent="submitTradeIn">
             <div class="form-section">
-              <h4>Personal Information</h4>
+              <h4><UserIcon size="20" class="section-icon" /> Personal Information</h4>
               <div class="form-row">
                 <div class="form-group">
                   <label for="fullName">Full Name</label>
@@ -74,6 +76,7 @@
                     >
                   </div>
                   <div v-if="phoneError" class="input-error">
+                    <AlertCircleIcon size="14" class="error-icon" />
                     Please enter a valid 8-digit phone number
                   </div>
                 </div>
@@ -88,7 +91,7 @@
             </div>
 
             <div class="form-section">
-              <h4>Product Information</h4>
+              <h4><PackageIcon size="20" class="section-icon" /> Product Information</h4>
               <div class="form-row">
                 <div class="form-group">
                   <label for="productName">Product Name</label>
@@ -152,6 +155,7 @@
                     >
                   </div>
                   <div v-if="ageError" class="input-error">
+                    <AlertCircleIcon size="14" class="error-icon" />
                     Please enter a valid whole number for product age
                   </div>
                 </div>
@@ -159,8 +163,8 @@
             </div>
 
             <div class="form-section">
-              <h4>Product Images</h4>
-              <p class="help-text">Upload a clear photo of your item.</p>
+              <h4><ImageIcon size="20" class="section-icon" /> Product Images</h4>
+              <p class="help-text">Upload a clear photo of your item (maximum 5 images).</p>
               
               <div class="image-upload-container">
                 <div 
@@ -189,7 +193,7 @@
               </div>
               <div class="upload-hint" v-if="imagePreviewUrls.length < 1">
                 <AlertCircleIcon size="16" />
-                <span>Please upload an image for a complete assessment</span>
+                <span>Please upload at least one image for a complete assessment</span>
               </div>
             </div>
 
@@ -202,14 +206,14 @@
           </form>
         </div>
 
-        <!-- Status Section -->
+        <!-- Status Section - Enhanced card design -->
         <div v-if="activeTab === 'status'" class="status-section">
-          <h3>Your Trade-In History</h3>
+          <h3 class="brown-title">Your Trade-In History</h3>
           
           <div v-if="tradeIns.length === 0" class="empty-state">
             <PackageIcon size="48" />
             <p>You don't have any trade-in requests yet.</p>
-            <button class="action-btn" @click="activeTab = 'submission'">Submit Your First Trade-In</button>
+            <button class="action-btn primary-btn" @click="activeTab = 'submission'">Submit Your First Trade-In</button>
           </div>
           
           <div v-else class="trade-in-list">
@@ -217,6 +221,10 @@
               <div class="card-header">
                 <h4>{{ item.productName }}</h4>
                 <div class="status-badge" :class="getStatusClass(item.status)">
+                  <span v-if="item.status === 'Pending'" class="status-icon"><ClockIcon size="14" /></span>
+                  <span v-else-if="item.status === 'Accepted'" class="status-icon"><CheckIcon size="14" /></span>
+                  <span v-else-if="item.status === 'Rejected'" class="status-icon"><XIcon size="14" /></span>
+                  <span v-else-if="item.status === 'Claimed'" class="status-icon"><TrophyIcon size="14" /></span>
                   {{ item.status }}
                 </div>
               </div>
@@ -228,19 +236,19 @@
                 <div class="product-details">
                   <div class="detail-row">
                     <span class="label">Submitted:</span>
-                    <span>{{ formatDate(item.submittedDate) }}</span>
+                    <span class="value">{{ formatDate(item.submittedDate) }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="label">Category:</span>
-                    <span>{{ item.category }}</span>
+                    <span class="value">{{ item.category }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="label">Condition:</span>
-                    <span>{{ item.condition }}</span>
+                    <span class="value">{{ item.condition }}</span>
                   </div>
                   <div v-if="item.status === 'Accepted' || item.status === 'Claimed'" class="detail-row points-row">
                     <span class="label">Reward:</span>
-                    <span class="points-badge">
+                    <span class="points-badge beige-box value">
                       <TrophyIcon size="16" />
                       20 Sustainability Points
                     </span>
@@ -248,20 +256,23 @@
                   <!-- Removed the Offered Value row for Asgaard Sofa -->
                   <div v-if="item.status === 'Accepted' && item.productName !== 'Asgaard Sofa' && item.offeredValue" class="detail-row">
                     <span class="label">Offered Value:</span>
-                    <span>Rs. {{ item.offeredValue.toLocaleString() }}</span>
+                    <span class="value-badge value">Rs. {{ item.offeredValue.toLocaleString() }}</span>
                   </div>
                   <div v-if="item.status === 'Claimed'" class="detail-row claimed-row">
                     <span class="label">Claimed:</span>
-                    <span>{{ formatDate(item.claimedDate) }}</span>
+                    <span class="value">{{ formatDate(item.claimedDate) }}</span>
                   </div>
                 </div>
               </div>
               
               <div class="card-actions">
-                <button class="action-btn" @click="viewDetails(item)">View Details</button>
+                <button class="action-btn" @click="viewDetails(item)">
+                  <EyeIcon size="16" class="btn-icon" />
+                  View Details
+                </button>
                 <button 
                   v-if="item.status === 'Accepted'" 
-                  class="action-btn accept-btn"
+                  class="action-btn beige-box"
                   @click="claimRewardPoints(item, index)"
                 >
                   <TrophyIcon size="16" class="btn-icon" />
@@ -269,9 +280,10 @@
                 </button>
                 <button 
                   v-if="item.status === 'Pending'" 
-                  class="action-btn cancel-btn"
+                  class="action-btn beige-box"
                   @click="confirmCancelRequest(index)"
                 >
+                  <XCircleIcon size="16" class="btn-icon" />
                   Cancel Request
                 </button>
               </div>
@@ -281,10 +293,9 @@
       </div>
     </div>
 
-
-    <!-- Points Claimed Notification Popup - Updated with new wording -->
+    <!-- Updated Points Claimed Notification Popup with new design -->
     <div class="notification-popup" v-if="showNotification">
-      <div class="notification-content">
+      <div class="notification-content new-style">
         <div class="notification-header">
           <h3>Points Claimed Successfully</h3>
           <button class="close-btn" @click="showNotification = false">
@@ -296,14 +307,20 @@
             <CheckIcon size="32" class="success-icon" />
           </div>
           <p>20 Sustainability Points have been added to your account. You can now redeem these points for vouchers and rewards!</p>
+          
+          <div class="centered-button">
+            <!-- Removed CheckIcon from OK button -->
+            <button class="view-cart-btn" @click="showNotification = false">
+              OK
+            </button>
+          </div>
         </div>
-        <button class="view-cart-btn" @click="viewPoints">Redeem Voucher</button>
       </div>
     </div>
 
-    <!-- View Details Popup for Pending Items -->
+    <!-- Updated View Details Popup for Pending Items with new design -->
     <div class="notification-popup" v-if="showPendingDetails">
-      <div class="notification-content">
+      <div class="notification-content new-style">
         <div class="notification-header">
           <h3>Request Status</h3>
           <button class="close-btn" @click="showPendingDetails = false">
@@ -318,14 +335,17 @@
             <p class="details-title">Your trade-in request is being processed</p>
             <p class="details-text">Our quality assessment team is currently reviewing your item. This process typically takes 2-3 business days. You'll receive an email notification once the assessment is complete.</p>
           </div>
+          
+          <div class="centered-button">
+            <button class="view-cart-btn" @click="showPendingDetails = false">Close</button>
+          </div>
         </div>
-        <button class="view-cart-btn" @click="showPendingDetails = false">Close</button>
       </div>
     </div>
 
-    <!-- View Details Popup for Rejected Items -->
+    <!-- Updated View Details Popup for Rejected Items with new design -->
     <div class="notification-popup" v-if="showRejectedDetails">
-      <div class="notification-content">
+      <div class="notification-content new-style">
         <div class="notification-header">
           <h3>Request Status</h3>
           <button class="close-btn" @click="showRejectedDetails = false">
@@ -341,14 +361,17 @@
             <p class="details-text">Unfortunately, we couldn't accept your item for the following reason:</p>
             <p class="rejection-reason">The item shows significant wear and damage beyond what can be refurbished according to our sustainability standards.</p>
           </div>
+          
+          <div class="centered-button">
+            <button class="view-cart-btn" @click="showRejectedDetails = false">Close</button>
+          </div>
         </div>
-        <button class="view-cart-btn" @click="showRejectedDetails = false">Close</button>
       </div>
     </div>
 
-    <!-- View Details Popup for Accepted Items -->
+    <!-- Updated View Details Popup for Accepted Items with new design -->
     <div class="notification-popup" v-if="showAcceptedDetails">
-      <div class="notification-content">
+      <div class="notification-content new-style">
         <div class="notification-header">
           <h3>Request Status</h3>
           <button class="close-btn" @click="showAcceptedDetails = false">
@@ -372,14 +395,17 @@
               </ul>
             </div>
           </div>
+          
+          <div class="centered-button">
+            <button class="view-cart-btn" @click="showAcceptedDetails = false">Confirm</button>
+          </div>
         </div>
-        <button class="view-cart-btn" @click="showAcceptedDetails = false">Confirm</button>
       </div>
     </div>
 
-    <!-- Cancel Confirmation Popup -->
+    <!-- Updated Cancel Confirmation Popup with new design -->
     <div class="notification-popup" v-if="showCancelConfirmation">
-      <div class="notification-content">
+      <div class="notification-content new-style">
         <div class="notification-header">
           <h3>Cancel Request</h3>
           <button class="close-btn" @click="showCancelConfirmation = false">
@@ -394,10 +420,11 @@
             <p class="details-title">Are you sure?</p>
             <p class="details-text">Do you really want to cancel this trade-in request? This action cannot be undone.</p>
           </div>
-        </div>
-        <div class="confirmation-actions">
-          <button class="cancel-confirm-btn" @click="cancelRequest">Yes, Cancel Request</button>
-          <button class="cancel-decline-btn" @click="showCancelConfirmation = false">No, Keep Request</button>
+          
+          <div class="centered-button">
+            <button class="cancel-confirm-btn" @click="cancelRequest">Yes, Cancel Request</button>
+            <button class="cancel-decline-btn" @click="showCancelConfirmation = false">No, Keep Request</button>
+          </div>
         </div>
       </div>
     </div>
@@ -419,12 +446,19 @@ import {
   HomeIcon,
   TagIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   CalendarIcon,
   AlertCircleIcon,
   SendIcon,
   CheckIcon,
   ClockIcon,
-  AlertTriangleIcon
+  AlertTriangleIcon,
+  FileTextIcon,
+  ClipboardListIcon,
+  ImageIcon,
+  EyeIcon,
+  XCircleIcon,
+  GiftIcon
 } from 'lucide-vue-next';
 
 // Active tab state
@@ -459,6 +493,62 @@ const showAcceptedDetails = ref(false);
 // Form validation
 const phoneError = ref(false);
 const ageError = ref(false);
+
+// Total sustainability points - to be shared with Rewards.vue
+const sustainabilityPoints = ref(0);
+
+// Create a method to update points that can be called from this component
+// and potentially exposed to other components
+const updateSustainabilityPoints = (points) => {
+  sustainabilityPoints.value += points;
+  
+  // Store points in localStorage to persist between page refreshes
+  localStorage.setItem('sustainabilityPoints', sustainabilityPoints.value);
+  
+  // Emit an event that Rewards.vue can listen for
+  // This requires setting up an event bus or using a state management solution
+  emitPointsUpdated();
+};
+
+// Example of how to set up a simple event bus for Vue 3
+// In a real application, you would define this in a separate file
+const emitter = (() => {
+  const events = {};
+  
+  const on = (event, callback) => {
+    if (!events[event]) {
+      events[event] = [];
+    }
+    events[event].push(callback);
+  };
+  
+  const emit = (event, data) => {
+    if (!events[event]) return;
+    events[event].forEach(callback => callback(data));
+  };
+  
+  return { on, emit };
+})();
+
+// Function to emit the points updated event
+const emitPointsUpdated = () => {
+  // Using our simple event bus
+  emitter.emit('points-updated', sustainabilityPoints.value);
+  
+  // Alternative: If you're using Pinia or Vuex, you would dispatch an action here
+  // Example with Pinia: useUserStore().updatePoints(sustainabilityPoints.value)
+};
+
+// Initialize points from localStorage if available
+const initPoints = () => {
+  const storedPoints = localStorage.getItem('sustainabilityPoints');
+  if (storedPoints) {
+    sustainabilityPoints.value = parseInt(storedPoints, 10);
+  }
+};
+
+// Call initPoints when component is mounted
+initPoints();
 
 const validatePhoneNumber = () => {
   // Remove any non-numeric characters
@@ -577,31 +667,26 @@ const claimRewardPoints = (item, index) => {
   tradeIns.value[index].status = 'Claimed';
   tradeIns.value[index].claimedDate = new Date();
   
+  // Add 20 points to the user's sustainability points
+  updateSustainabilityPoints(20);
+  
   // Show notification
   showNotification.value = true;
-  
-  // Auto-hide notification after 5 seconds
-  setTimeout(() => {
-    showNotification.value = false;
-  }, 5000);
 };
 
-// View points function - Updated to navigate to Sustainability Challenges & Rewards page
-const viewPoints = () => {
+// Modified to remove navigation - just close the popup
+const navigateToCart = () => {
   showNotification.value = false;
-  // Here you would typically navigate to the Sustainability Challenges & Rewards page
-  console.log('Navigate to Sustainability Challenges & Rewards page');
-  alert('Redirecting to Sustainability Challenges & Rewards page where you can redeem your points for vouchers.');
-  // For demo purposes, we'll just close the notification and show an alert
 };
 
-// Update the viewDetails function to handle the "Accepted" status
+// Update the viewDetails function to handle the "Claimed" status the same as "Accepted"
 const viewDetails = (item) => {
   if (item.status === 'Pending') {
     showPendingDetails.value = true;
   } else if (item.status === 'Rejected') {
     showRejectedDetails.value = true;
-  } else if (item.status === 'Accepted') {
+  } else if (item.status === 'Accepted' || item.status === 'Claimed') {
+    // Show the same details for both Accepted and Claimed items
     showAcceptedDetails.value = true;
   } else {
     console.log('View details for:', item);
@@ -670,6 +755,14 @@ const getStatusClass = (status) => {
     default: return '';
   }
 };
+
+// Export the sustainability points and update method for use in other components
+// This allows Rewards.vue to import and use these values
+defineExpose({
+  sustainabilityPoints,
+  updateSustainabilityPoints,
+  emitter // Export the event emitter for other components to listen to events
+});
 </script>
 
 <style scoped>
@@ -684,6 +777,7 @@ body {
   font-family: 'Inter', sans-serif;
   color: #242424;
   background-color: #ffffff;
+  line-height: 1.5;
 }
 
 .container {
@@ -692,117 +786,79 @@ body {
   padding: 0 20px;
 }
 
-/* Header Styles */
-.header {
-  background-color: #ffffff;
-  padding: 20px 0;
-  border-bottom: 1px solid #f9f1e7;
-  box-shadow: 0 2px 10px rgba(112, 65, 22, 0.05);
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.logo {
-  color: #704116;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.main-nav ul {
-  display: flex;
-  list-style: none;
-  gap: 30px;
-}
-
-.main-nav a {
-  text-decoration: none;
-  color: #242424;
-  font-weight: 500;
-  transition: color 0.3s;
-}
-
-.main-nav a:hover, .main-nav a.active {
-  color: #704116;
-  font-weight: 600;
-}
-
-.header-icons {
-  display: flex;
-  gap: 15px;
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #242424;
-}
-
-/* Hero Banner - Reverted to original light color */
-.hero-banner {
-  background-color: #faf3ea;
+/* Updated Hero Section without any effects */
+.hero-section {
+  position: relative;
+  height: 200px;
+  background-image: url('/marketplace/headerbackground.png?height=300&width=1200');
   background-size: cover;
   background-position: center;
-  padding: 80px 0 40px;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -1px; /* Remove gap with header */
 }
 
-.hero-banner::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.1);
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 10;
+  position: relative;
 }
 
 .hero-title {
-  color: #242424;
-  font-size: 48px;
-  font-weight: 700;
-  margin-bottom: 10px;
-  position: relative;
-  z-index: 1;
-  text-align: center;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #5D3A1A; /* Brown color */
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .breadcrumb {
   display: flex;
-  justify-content: center;
   align-items: center;
-  color: #242424;
-  position: relative;
-  z-index: 1;
+  color: #5D3A1A; /* Brown color */
+  font-size: 16px;
 }
 
-.breadcrumb .separator {
-  margin: 0 10px;
+.breadcrumb-link {
+  font-size: 0.875rem;
+  text-decoration: none;
+  color: #5D3A1A; /* Brown color */
 }
 
-.breadcrumb .current {
-  font-weight: 600;
+.breadcrumb-icon {
+  width: 1rem;
+  height: 1rem;
+  margin: 0 0.5rem;
+  color: #5D3A1A; /* Brown color */
+}
+
+.breadcrumb-current {
+  font-size: 0.875rem;
+  /* Removed font-weight: 600; as requested */
+  color: #5D3A1A; /* Brown color */
 }
 
 /* Content Styles */
 .content-wrapper {
-  padding: 40px 0;
+  padding: 50px 0;
   background-color: #ffffff;
 }
 
-/* Tabs */
+/* Tabs - Enhanced with icons and better styling */
 .tabs {
   display: flex;
-  margin-bottom: 30px;
+  margin-bottom: 40px;
   border-bottom: 1px solid #f9f1e7;
+  gap: 10px;
 }
 
 .tab-btn {
-  padding: 15px 30px;
+  padding: 16px 24px;
   background: none;
   border: none;
   border-bottom: 3px solid transparent;
@@ -810,27 +866,43 @@ body {
   font-weight: 600;
   color: #898989;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .tab-btn.active {
-  color: #704116;
-  border-bottom-color: #704116;
+  color: #5D3A1A;
+  border-bottom-color: #5D3A1A;
   font-weight: 700;
 }
 
-/* Form Styles - Enhanced */
+.tab-btn:hover:not(.active) {
+  color: #704116;
+  background-color: rgba(93, 58, 26, 0.05);
+}
+
+.tab-icon {
+  opacity: 0.8;
+}
+
+/* Form Styles - Enhanced with better spacing and transitions */
 .submission-form {
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 40px;
-  box-shadow: 0 6px 24px rgba(112, 65, 22, 0.08);
+  box-shadow: 0 10px 30px rgba(112, 65, 22, 0.08);
+}
+
+.brown-title {
+  color: #5D3A1A !important;
 }
 
 .submission-form h3 {
   font-size: 28px;
   margin-bottom: 12px;
-  color: #242424;
+  font-weight: 700;
 }
 
 .submission-form p {
@@ -841,24 +913,39 @@ body {
 
 .form-section {
   margin-bottom: 35px;
-  padding-bottom: 25px;
+  padding-bottom: 30px;
   border-bottom: 1px solid #f9f1e7;
+}
+
+.form-section:last-child {
+  border-bottom: none;
 }
 
 .form-section h4 {
   font-size: 20px;
   margin-bottom: 25px;
-  color: #704116;
-  border-left: 4px solid #8B5A2B;
-  padding-left: 12px;
+  color: #5D3A1A;
   display: flex;
   align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.section-icon {
+  color: #5D3A1A;
 }
 
 .form-row {
   display: flex;
   gap: 24px;
   margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 16px;
+  }
 }
 
 .form-group {
@@ -886,22 +973,24 @@ label {
   color: #8B5A2B;
 }
 
-input, textarea {
+input, textarea, select {
   width: 100%;
   padding: 14px 15px 14px 40px;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 16px;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
   background-color: #fafafa;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 textarea {
   padding: 14px 15px;
   resize: vertical;
+  min-height: 120px;
 }
 
-input:focus, textarea:focus {
+input:focus, textarea:focus, select:focus {
   border-color: #8B5A2B;
   outline: none;
   box-shadow: 0 0 0 3px rgba(139, 90, 43, 0.1);
@@ -915,7 +1004,14 @@ input::placeholder, textarea::placeholder {
 .input-error {
   color: #c62828;
   font-size: 14px;
-  margin-top: 6px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.error-icon {
+  flex-shrink: 0;
 }
 
 .select-wrapper {
@@ -926,19 +1022,12 @@ select {
   width: 100%;
   padding: 14px 15px;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 16px;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
   background-color: #fafafa;
   appearance: none;
   cursor: pointer;
-}
-
-select:focus {
-  border-color: #8B5A2B;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(139, 90, 43, 0.1);
-  background-color: #ffffff;
 }
 
 .select-icon {
@@ -956,7 +1045,7 @@ select:focus {
   margin-bottom: 20px;
 }
 
-/* Image Upload - Enhanced */
+/* Image Upload - Enhanced with better hover effects */
 .image-upload-container {
   display: flex;
   flex-wrap: wrap;
@@ -967,9 +1056,15 @@ select:focus {
 .image-preview {
   width: 140px;
   height: 140px;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   position: relative;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.image-preview:hover {
+  transform: translateY(-5px);
 }
 
 .image-preview img {
@@ -981,19 +1076,26 @@ select:focus {
 
 .image-preview .remove-btn {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  background-color: rgba(0, 0, 0, 0.5);
+  top: 8px;
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.6);
   color: #fff;
   border: none;
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s ease;
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.image-preview:hover .remove-btn {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .image-preview .remove-btn:hover {
@@ -1004,19 +1106,21 @@ select:focus {
   width: 140px;
   height: 140px;
   border: 2px dashed #bdbdbd;
-  border-radius: 10px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #898989;
   cursor: pointer;
-  transition: border-color 0.3s;
+  transition: all 0.3s ease;
+  background-color: #f9f9f9;
 }
 
 .upload-box:hover {
   border-color: #8B5A2B;
   color: #704116;
+  background-color: rgba(139, 90, 43, 0.05);
 }
 
 .upload-box span {
@@ -1034,6 +1138,9 @@ select:focus {
   color: #c62828;
   font-size: 14px;
   margin-top: 8px;
+  background-color: rgba(198, 40, 40, 0.05);
+  padding: 8px 12px;
+  border-radius: 6px;
 }
 
 .upload-hint span {
@@ -1048,55 +1155,75 @@ select:focus {
 
 .submit-btn {
   padding: 14px 32px;
-  background-color: #704116;
+  background-color: #5D3A1A;
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  box-shadow: 0 4px 12px rgba(93, 58, 26, 0.2);
 }
 
 .submit-btn:hover {
-  background-color: #8B5A2B;
+  background-color: #704116;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(93, 58, 26, 0.25);
+}
+
+.submit-btn:active {
+  transform: translateY(0);
 }
 
 .submit-btn:disabled {
   background-color: #bdbdbd;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-/* Status Section */
+/* Status Section - Enhanced card design */
 .status-section {
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 40px;
-  box-shadow: 0 6px 24px rgba(112, 65, 22, 0.08);
+  box-shadow: 0 10px 30px rgba(112, 65, 22, 0.08);
 }
 
 .status-section h3 {
   font-size: 28px;
   margin-bottom: 30px;
-  color: #242424;
+  font-weight: 700;
 }
 
 .empty-state {
   text-align: center;
   color: #898989;
-  padding: 50px 0;
+  padding: 60px 0;
+  background-color: #f9f9f9;
+  border-radius: 12px;
 }
 
 .empty-state p {
   margin-top: 20px;
   font-size: 18px;
+  margin-bottom: 24px;
+}
+
+.primary-btn {
+  background-color: #5D3A1A;
+  color: #ffffff;
+}
+
+.primary-btn:hover {
+  background-color: #704116;
 }
 
 .action-btn {
-  padding: 12px 24px;
+  padding: 12px 20px;
   background-color: #f0f0f0;
   color: #242424;
   border: none;
@@ -1104,15 +1231,18 @@ select:focus {
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s;
-  margin-top: 30px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .action-btn:hover {
   background-color: #e0e0e0;
+  transform: translateY(-2px);
 }
 
-/* Trade-In List */
+/* Trade-In List - Enhanced card design */
 .trade-in-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -1120,15 +1250,17 @@ select:focus {
 }
 
 .trade-in-card {
-  background-color: #fafafa;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(112, 65, 22, 0.06);
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(112, 65, 22, 0.08);
   overflow: hidden;
-  transition: transform 0.3s;
+  transition: all 0.3s ease;
+  border: 1px solid #f0f0f0;
 }
 
 .trade-in-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 30px rgba(112, 65, 22, 0.12);
 }
 
 .card-header {
@@ -1137,35 +1269,47 @@ select:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid rgba(112, 65, 22, 0.1);
 }
 
 .card-header h4 {
   font-size: 20px;
   color: #242424;
+  font-weight: 600;
 }
 
 .status-badge {
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 30px;
   font-size: 14px;
   font-weight: 600;
   color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
+.status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Updated status colors to be less jarring */
 .status-accepted {
-  background-color: #4caf50;
+  background-color: #7cb342; /* Softer green */
 }
 
 .status-rejected {
-  background-color: #f44336;
+  background-color: #e57373; /* Softer red */
 }
 
 .status-pending {
-  background-color: #ff9800;
+  background-color: #ffb74d; /* Softer orange */
 }
 
 .status-claimed {
-  background-color: #9c27b0;
+  background-color: #ba68c8; /* Softer purple */
 }
 
 .card-content {
@@ -1177,8 +1321,10 @@ select:focus {
 .product-image {
   width: 120px;
   height: 120px;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .product-image img {
@@ -1186,31 +1332,41 @@ select:focus {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.5s ease;
+}
+
+.product-image:hover img {
+  transform: scale(1.1);
 }
 
 .product-details {
   flex: 1;
 }
 
+/* Update the detail-row styling to ensure consistent alignment */
 .detail-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  margin-bottom: 10px;
   font-size: 15px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
+  align-items: center;
 }
 
 .detail-row .label {
   font-weight: 500;
   color: #704116;
+  text-align: left;
 }
 
-.points-row {
-  align-items: center;
+.detail-row .value {
+  text-align: right;
+  justify-self: end;
 }
 
+/* Update the points-badge to maintain alignment */
 .points-badge {
-  background-color: #ffc107;
-  color: #242424;
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 14px;
@@ -1218,85 +1374,116 @@ select:focus {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  justify-self: end;
 }
 
 .claimed-row {
   color: #9c27b0;
+  font-weight: 500;
 }
 
 .card-actions {
   padding: 20px;
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
   border-top: 1px solid #f9f1e7;
 }
 
 .action-btn.accept-btn {
-  background-color: #4caf50;
-  color: #fff;
+  background-color: #e8d5b5; /* Changed to beige */
+  color: #5D3A1A;
 }
 
 .action-btn.accept-btn:hover {
-  background-color: #43a047;
+  background-color: #d9c6a6; /* Darker beige on hover */
 }
 
 .action-btn.cancel-btn {
-  background-color: #f44336;
-  color: #fff;
+  background-color: #e8d5b5; /* Changed to beige */
+  color: #5D3A1A;
 }
 
 .action-btn.cancel-btn:hover {
-  background-color: #d32f2f;
+  background-color: #d9c6a6; /* Darker beige on hover */
 }
 
 .btn-icon {
-  margin-right: 6px;
+  flex-shrink: 0;
 }
 
-/* Notification Popup Styles */
+/* Notification Popup Styles - Updated with new design */
 .notification-popup {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .notification-content {
   background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   width: 500px;
   max-width: 90%;
+  animation: slideUp 0.4s ease;
+  overflow: hidden;
 }
 
-.notification-header {
+/* New popup style with beige header */
+.notification-content.new-style {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.notification-content.new-style .notification-header {
+  background-color: #f8f0e3; /* Beige color for header */
   padding: 20px;
-  border-bottom: 1px solid #f9f1e7;
+  border-bottom: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.notification-header h3 {
+.notification-content.new-style .notification-header h3 {
   font-size: 22px;
-  color: #242424;
+  color: #5D3A1A; /* Brown text for contrast */
+  font-weight: 600;
 }
 
-.close-btn {
+.notification-content.new-style .close-btn {
+  color: #5D3A1A;
   background: none;
   border: none;
   cursor: pointer;
-  color: #898989;
-  transition: color 0.3s;
+  transition: opacity 0.3s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.close-btn:hover {
-  color: #242424;
+.notification-content.new-style .close-btn:hover {
+  opacity: 0.7;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .notification-body {
@@ -1304,15 +1491,18 @@ select:focus {
   text-align: center;
 }
 
-.success-icon-wrapper {
-  width: 64px;
-  height: 64px;
+.success-icon-wrapper, .info-icon-wrapper, .rejected-icon-wrapper, .accepted-icon-wrapper, .warning-icon-wrapper {
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  background-color: rgba(76, 175, 80, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 20px;
+  margin: 0 auto 24px;
+}
+
+.success-icon-wrapper {
+  background-color: rgba(76, 175, 80, 0.1);
 }
 
 .success-icon {
@@ -1320,14 +1510,7 @@ select:focus {
 }
 
 .info-icon-wrapper {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
   background-color: rgba(255, 152, 0, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
 }
 
 .info-icon {
@@ -1335,14 +1518,7 @@ select:focus {
 }
 
 .rejected-icon-wrapper {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
   background-color: rgba(244, 67, 54, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
 }
 
 .rejected-icon {
@@ -1350,45 +1526,56 @@ select:focus {
 }
 
 .accepted-icon-wrapper {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
   background-color: rgba(76, 175, 80, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
 }
 
 .accepted-icon {
   color: #4caf50;
 }
 
+.warning-icon-wrapper {
+  background-color: rgba(255, 152, 0, 0.1);
+}
+
+.warning-icon {
+  color: #ff9800;
+}
+
 .notification-body p {
   font-size: 16px;
   color: #242424;
   margin-bottom: 15px;
+  line-height: 1.6;
 }
 
 .details-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  color: #242424;
 }
 
 .details-text {
   color: #898989;
   margin-bottom: 20px;
+  line-height: 1.6;
 }
 
 .rejection-reason {
   color: #c62828;
   font-weight: 500;
+  background-color: rgba(198, 40, 40, 0.05);
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 12px;
 }
 
 .collection-details {
-  margin-top: 20px;
+  margin-top: 24px;
   text-align: left;
+  background-color: #f9f9f9;
+  padding: 16px;
+  border-radius: 10px;
 }
 
 .collection-details p {
@@ -1401,47 +1588,63 @@ select:focus {
 }
 
 .collection-details li {
-  margin-bottom: 5px;
+  margin-bottom: 8px;
   color: #898989;
+}
+
+/* Center button in popup */
+.centered-button {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
 }
 
 .view-cart-btn {
   padding: 14px 32px;
-  background-color: #704116;
+  background-color: #5D3A1A;
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(93, 58, 26, 0.2);
 }
 
 .view-cart-btn:hover {
-  background-color: #8B5A2B;
+  background-color: #704116;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(93, 58, 26, 0.25);
 }
 
 .confirmation-actions {
-  padding: 20px;
-  text-align: center;
-  border-top: 1px solid #f9f1e7;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 .cancel-confirm-btn {
   padding: 12px 24px;
-  background-color: #f44336;
+  background-color: #5D3A1A; /* Changed to brown */
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s;
-  margin-right: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(93, 58, 26, 0.2);
 }
 
 .cancel-confirm-btn:hover {
-  background-color: #d32f2f;
+  background-color: #704116; /* Darker brown on hover */
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(93, 58, 26, 0.25);
 }
 
 .cancel-decline-btn {
@@ -1449,15 +1652,62 @@ select:focus {
   background-color: #e0e0e0;
   color: #242424;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
 }
 
 .cancel-decline-btn:hover {
   background-color: #bdbdbd;
+  transform: translateY(-2px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-banner {
+    padding: 80px 0 40px;
+  }
+  
+  .hero-title {
+    font-size: 36px;
+  }
+  
+  .trade-in-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .card-content {
+    flex-direction: column;
+  }
+  
+  .product-image {
+    width: 100%;
+    height: 200px;
+  }
+  
+  .card-actions {
+    flex-direction: column;
+  }
+  
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.action-btn.beige-box {
+  background-color: #e8d5b5 !important; /* Beige color */
+  color: #5D3A1A !important; /* Darker text for contrast */
+}
+
+.action-btn.beige-box:hover {
+  background-color: #d9c6a6 !important; /* Darker beige on hover */
+}
+
+.beige-box {
+  background-color: #e8d5b5 !important; /* Beige color */
+  color: #5D3A1A !important; /* Darker text for contrast */
 }
 </style>
-
