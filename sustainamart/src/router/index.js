@@ -7,7 +7,7 @@ import Rewards from '../views/Rewards.vue'
 import TradeIn from '../views/TradeIn.vue'
 import ContactSupport from '../views/ContactSupport.vue'
 import Cart from '../views/Cart.vue' // Adjust the path as per your structure
-// import ViewProduct from '../views/ViewProduct.vue'
+import ProductDetail from '../views/ProductDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -46,6 +46,12 @@ const router = createRouter({
       name: 'cart',
       component: Cart,
     },
+    {
+      path: '/product/:id',
+      name: 'ProductDetail',
+      component: ProductDetail, 
+      props: true 
+    }
   ],
 })
 

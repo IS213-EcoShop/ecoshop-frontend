@@ -19,9 +19,7 @@
       <div class="container">
         <!-- Filter Bar -->
         <div class="filter-bar">
-          <button class="filter-button">
-            <span class="filter-icon"></span> Filter
-          </button>
+          <!-- Removed the filter button as requested -->
           <div class="results-info">Showing {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage *
             itemsPerPage, filteredProducts.length) }} of {{ filteredProducts.length }} results</div>
           <div class="sort-options">
@@ -66,19 +64,29 @@
             <div class="filter-section">
               <h3>Price Range</h3>
               <div class="price-slider">
-                <input type="range" min="0" max="100" v-model="priceRange" class="slider" @change="applyPriceFilter">
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1000" 
+                  v-model="priceRange" 
+                  class="slider" 
+                  @input="updatePriceFilter"
+                >
+                <div class="price-range-values">
+                  <span>Current: ${{ filters.maxPrice }}</span>
+                </div>
                 <div class="price-inputs">
                   <div>
-                    <label>Min</label>
+                    <label>Min: ${{ filters.minPrice }}</label>
                   </div>
                   <div>
-                    <label>Max</label>
+                    <label>Max: $1000</label>
                   </div>
                 </div>
               </div>
             </div>
 
-            <button class="apply-filters-btn" @click="applyFilters">Apply Filters</button>
+            <!-- Removed the Apply Filters button as requested -->
           </aside>
 
           <!-- Products Section -->
@@ -207,7 +215,7 @@ export default {
   },
   data() {
     return {
-      priceRange: [0, 1000],
+      priceRange: 0,
       cart: [],
       currentPage: 1,
       itemsPerPage: 12,
@@ -215,15 +223,14 @@ export default {
       filters: {
         categories: [],
         minPrice: 0,
-        maxPrice: 1000
+        maxPrice: 0
       },
       allProducts: [],
       isLoading: false,
       error: null,
       productQuantities: {}, // Store quantities for each product
       showNotification: false,
-      notificationMessage: '',
-      notificationTimeout: null
+      notificationMessage: ''
     }
   },
 
@@ -307,6 +314,11 @@ export default {
           quantities[product.id] = 1;
         });
         this.productQuantities = quantities;
+        
+        // Set initial price range values
+        this.filters.minPrice = 0;
+        this.filters.maxPrice = 1000;
+        this.priceRange = 1000;
 
       } catch (err) {
         this.error = err.message
@@ -327,12 +339,10 @@ export default {
     applySort() {
       this.currentPage = 1;
     },
-    applyPriceFilter() {
-      // Convert slider value to price range
-      this.filters.minPrice = 0;
-      this.filters.maxPrice = this.priceRange * 10; // Max price of 200
-    },
-    applyFilters() {
+    updatePriceFilter() {
+      // Update the max price based on slider value
+      this.filters.maxPrice = parseInt(this.priceRange);
+      // Auto-apply filters when slider changes
       this.currentPage = 1;
     },
     resetPagination() {
@@ -361,18 +371,9 @@ export default {
     
     // Show notification
     showCartNotification(message) {
-      // Clear any existing timeout
-      if (this.notificationTimeout) {
-        clearTimeout(this.notificationTimeout);
-      }
-      
       this.notificationMessage = message;
       this.showNotification = true;
-      
-      // Auto-hide after 3 seconds
-      this.notificationTimeout = setTimeout(() => {
-        this.hideNotification();
-      }, 3000);
+      // No auto-hide - notification stays until user closes it
     },
     
     // Hide notification
@@ -385,14 +386,10 @@ export default {
       // Hide the notification
       this.hideNotification();
       
-      // In a real app with Vue Router, you would use:
-      // this.$router.push('/cart');
-      
-      // For now, we'll just show an alert
-      alert('Navigating to cart page...');
-      
-      // You could also use window.location for a full page navigation:
-      // window.location.href = '/cart';
+      // Navigate to Cart.vue using Vue Router
+      this.$router.push('/cart').then(() => {
+        window.scrollTo(0, 0);
+      });
     },
     
     // Add to cart with quantity
@@ -425,17 +422,15 @@ export default {
     },
     
     viewProductDetails(productId) {
-      // In a real app, this would navigate to the product detail page
-      // For now, we'll just show an alert
-      alert(`Viewing details for product ID: ${productId}`);
-
-      // In a real app with Vue Router, you would use:
-      // this.$router.push(`/product/${productId}`);
+      // Navigate to product detail page
+      this.$router.push(`/product/${productId}`).then(() => {
+        window.scrollTo(0, 0);
+      });
     }
   },
   created() {
     // Initialize any data or perform actions when component is created
-    this.applyFilters();
+    this.updatePriceFilter(); // Apply initial price filter
   }
 }
 </script>
@@ -648,41 +643,24 @@ button {
   font-size: 0.875rem;
 }
 
-/* Filter Bar */
+/* Filter Bar - Changed to white background */
 .filter-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  background-color: #f9f1e7;
+  background-color: #ffffff; /* Changed from #f9f1e7 to white */
   border-radius: 8px 8px 0 0;
   margin-top: 20px;
-}
-
-.filter-button {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 8px 15px;
-  background-color: #fff;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.filter-icon {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  background-color: #333;
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>');
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Added subtle shadow for consistency with sidebar */
 }
 
 .results-info {
   font-size: 14px;
   color: #666;
+  background-color: #f9f1e7; /* Keep this beige for the results info box */
+  padding: 8px 15px;
+  border-radius: 4px;
 }
 
 .sort-options {
@@ -696,7 +674,8 @@ button {
   padding: 6px 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  background-color: #fff;
+  background-color: #f9f1e7; /* Changed from #fff to beige */
+  color: #333;
 }
 
 /* Content Grid */
@@ -707,21 +686,33 @@ button {
   margin: 30px 0;
 }
 
-/* Sidebar */
+/* Sidebar - Changed to white background */
 .sidebar {
-  background-color: #f9f1e7;
+  background-color: #ffffff; /* White background */
   padding: 20px;
   border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
+/* Update the filter sections to beige and remove gap between them */
 .filter-section {
-  margin-bottom: 25px;
+  margin-bottom: 0; /* Remove bottom margin to eliminate gap */
+  background-color: #f9f1e7; /* Beige color */
+  padding: 15px;
+  border-radius: 6px;
 }
 
+/* Add margin only to the first filter section */
+.filter-section:first-child {
+  margin-bottom: 1px; /* Just a tiny gap to visually separate them */
+}
+
+/* Update text color in sidebar for better contrast */
 .filter-section h3 {
   font-size: 16px;
   margin-bottom: 15px;
   font-weight: 600;
+  color: #333; /* Darker text for better contrast on beige */
 }
 
 .filter-options {
@@ -736,6 +727,7 @@ button {
   gap: 8px;
   font-size: 14px;
   cursor: pointer;
+  color: #333; /* Darker text for better contrast on beige */
 }
 
 .price-slider {
@@ -775,16 +767,16 @@ button {
   display: flex;
   justify-content: space-between;
   font-size: 14px;
+  margin-top: 10px;
+  color: #333; /* Darker text for better contrast on beige */
 }
 
-.apply-filters-btn {
-  width: 100%;
-  padding: 10px;
-  background-color: #704116;
-  color: white;
-  border-radius: 4px;
+.price-range-values {
+  text-align: center;
+  font-size: 14px;
   font-weight: 500;
-  margin-top: 20px;
+  color: #333; /* Darker text for better contrast on beige */
+  margin-bottom: 5px;
 }
 
 /* Product Grid */
