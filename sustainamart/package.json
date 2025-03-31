@@ -11,9 +11,12 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@apollo/client": "^3.13.5",
     "@radix-ui/react-accordion": "^1.2.3",
+    "@vue/apollo-composable": "^4.2.2",
     "axios": "^1.8.4",
     "clsx": "^2.1.1",
+    "graphql": "^16.10.0",
     "lucide-react": "^0.483.0",
     "lucide-vue-next": "^0.483.0",
     "pinia": "^3.0.1",
