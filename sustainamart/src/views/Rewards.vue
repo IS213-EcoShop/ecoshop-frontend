@@ -128,40 +128,6 @@
           </div>
         </div>
       </div>
-      
-      <div class="features-section">
-        <div class="feature">
-          <div class="feature-icon">
-            <trophy-icon />
-          </div>
-          <h3 class="feature-title">High Quality</h3>
-          <p class="feature-description">crafted from top materials</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">
-            <shield-check-icon />
-          </div>
-          <h3 class="feature-title">Warranty Protection</h3>
-          <p class="feature-description">Over 2 years</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">
-            <truck-icon />
-          </div>
-          <h3 class="feature-title">Free Shipping</h3>
-          <p class="feature-description">Order over 150 $</p>
-        </div>
-        
-        <div class="feature">
-          <div class="feature-icon">
-            <headphones-icon />
-          </div>
-          <h3 class="feature-title">24 / 7 Support</h3>
-          <p class="feature-description">Dedicated support</p>
-        </div>
-      </div>
     </main>
     
     <!-- Toast notification for points -->
@@ -1328,50 +1294,6 @@ button {
 
 .use-voucher-button:hover {
   background-color: #5a3412;
-}
-
-/* Features Section */
-.features-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-top: 3rem;
-}
-
-@media (min-width: 768px) {
-  .features-section {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.feature {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 1rem;
-}
-
-.feature-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  margin-bottom: 1rem;
-  background-color: #f8ead7;
-  border-radius: 50%;
-  color: #704116;
-}
-
-.feature-title {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.feature-description {
-  font-size: 0.875rem;
-  color: #777;
 }
 
 /* Toast notification */
