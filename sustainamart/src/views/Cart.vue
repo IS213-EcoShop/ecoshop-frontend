@@ -434,6 +434,9 @@ export default {
       this.isLoading = true;
       
       try {
+
+        console.log("🔄 Initiating checkout...");
+        
         // Prepare checkout data including voucher if applied
         const checkoutData = {
           cartItems: this.cartItems.map(item => ({
@@ -449,9 +452,22 @@ export default {
             amount: this.calculateDiscount()
           };
         }
+
+        // **Step 1: Place Order via Microservice**
+        const placeOrderResponse = await fetch('http://127.0.0.1:5301/place_order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userID: 1 }) // Ensure userID is available
+        });
+
+        if (!placeOrderResponse.ok) {
+          throw new Error('Order placement failed');
+        }
+
+        console.log("✅ Order placed successfully!");
         
         // Call the checkout endpoint to create a Stripe session
-        const response = await fetch('https://personal-o2kymv2n.outsystemscloud.com/SustainaMart/rest/v1/checkout/create-session', {
+        const stripeResponse = await fetch('https://personal-o2kymv2n.outsystemscloud.com/SustainaMart/rest/v1/checkout/create-session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -459,11 +475,11 @@ export default {
           body: JSON.stringify(checkoutData)
         });
         
-        if (!response.ok) {
+        if (!stripeResponse.ok) {
           throw new Error('Failed to create checkout session');
         }
         
-        const data = await response.json();
+        const data = await stripeResponse.json();
         
         // If checkout is successful, mark the voucher as used and clear the cart
         if (this.selectedVoucher) {
