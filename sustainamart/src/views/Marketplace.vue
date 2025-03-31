@@ -1,6 +1,5 @@
 <template>
   <div class="marketplace">
-
     <!-- Hero Banner -->
     <div class="hero-section">
       <div class="hero-blur-overlay"></div>
@@ -19,7 +18,6 @@
       <div class="container">
         <!-- Filter Bar -->
         <div class="filter-bar">
-          <!-- Removed the filter button as requested -->
           <div class="results-info">Showing {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage *
             itemsPerPage, filteredProducts.length) }} of {{ filteredProducts.length }} results</div>
           <div class="sort-options">
@@ -85,8 +83,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Removed the Apply Filters button as requested -->
           </aside>
 
           <!-- Products Section -->
@@ -101,10 +97,9 @@
                   </span>
                 </div>
                 <div class="product-info">
-                  <a :href="`/product/${product.id}`" class="product-title-link"
-                    @click.prevent="viewProductDetails(product.id)">
+                  <router-link :to="`/product/${product.id}`" class="product-title-link">
                     <h3 class="product-title">{{ product.name }}</h3>
-                  </a>
+                  </router-link>
                   <p class="product-description">{{ product.description }}</p>
                   <div class="product-price">
                     <span class="current-price">${{ product.price.toFixed(2) }}</span>
@@ -115,11 +110,11 @@
                   <!-- Quantity Selector and Add to Cart -->
                   <div class="quantity-cart-container">
                     <div class="quantity-selector">
-                      <button @click="decrementQuantity(product.id)" class="quantity-btn">-</button>
+                      <button @click.stop="decrementQuantity(product.id)" class="quantity-btn">-</button>
                       <span class="quantity-value">{{ productQuantities[product.id] || 1 }}</span>
-                      <button @click="incrementQuantity(product.id)" class="quantity-btn">+</button>
+                      <button @click.stop="incrementQuantity(product.id)" class="quantity-btn">+</button>
                     </div>
-                    <button @click="addToCart(product)" class="add-to-cart-btn">Add to Cart</button>
+                    <button @click.stop="addToCart(product)" class="add-to-cart-btn">Add to Cart</button>
                   </div>
                 </div>
               </div>
@@ -195,27 +190,36 @@
 </template>
 
 <script>
+import { 
+  ChevronRight as ChevronRightIcon, 
+  CheckCircle as CheckCircleIcon
+} from 'lucide-vue-next'
 
 export default {
   name: 'MarketplaceTab',
+  components: {
+    ChevronRightIcon,
+    CheckCircleIcon
+  },
   beforeCreate() {
-    console.log('MARKETPLACE - beforeCreate') // Should appear first
-
+    console.log('MARKETPLACE - beforeCreate')
   },
   created() {
-    console.log('MARKETPLACE - created') // Should appear second
+    console.log('MARKETPLACE - created')
   },
   beforeMount() {
-    console.log('MARKETPLACE - beforeMount') // Should appear third
+    console.log('MARKETPLACE - beforeMount')
     this.fetchProducts()
-
   },
   mounted() {
-    console.log('MARKETPLACE - mounted') // Should appear last
+    console.log('MARKETPLACE - mounted')
+    
+    // Check if we need to restore cart from localStorage
+    this.loadCartFromStorage()
   },
   data() {
     return {
-      priceRange: 0,
+      priceRange: 1000, // Set default to max
       cart: [],
       currentPage: 1,
       itemsPerPage: 12,
@@ -223,18 +227,17 @@ export default {
       filters: {
         categories: [],
         minPrice: 0,
-        maxPrice: 0
+        maxPrice: 1000
       },
       allProducts: [],
       isLoading: false,
       error: null,
       productQuantities: {}, // Store quantities for each product
       showNotification: false,
-      notificationMessage: ''
+      notificationMessage: '',
+      productCache: {} // Cache for product data
     }
   },
-
-
   computed: {
     filteredProducts() {
       let result = [...this.allProducts];
@@ -272,6 +275,17 @@ export default {
     }
   },
   methods: {
+    loadCartFromStorage() {
+      try {
+        const storedCart = localStorage.getItem('sustainamart-cart');
+        if (storedCart) {
+          this.cart = JSON.parse(storedCart);
+          console.log('Cart loaded from storage:', this.cart);
+        }
+      } catch (error) {
+        console.error('Error loading cart from storage:', error);
+      }
+    },
     async fetchProducts() {
       this.isLoading = true
       this.error = null
@@ -286,7 +300,7 @@ export default {
         // Get the JSON data
         const responseData = await response.json();
 
-        // Extract the Products array - THIS IS THE CRUCIAL FIX
+        // Extract the Products array
         const products = responseData.Products || [];
         console.log('Products:', products);
 
@@ -295,14 +309,13 @@ export default {
         }
         console.log('Products array length:', products.length);
 
-
         this.allProducts = products.map(product => ({
           // Map your API fields to your component's expected structure
           id: product.productId,
           name: product.Name,
           description: product.Description,
           price: product.Price,
-          image: product.ImageURL, // Or process with Supabase if needed
+          image: product.ImageURL,
           category: product.Category,
           tag: product.TagClass ? product.TagClass.split('-').join(' ') : null,
           tagClass: product.TagClass
@@ -320,12 +333,104 @@ export default {
         this.filters.maxPrice = 1000;
         this.priceRange = 1000;
 
+        // Cache products for detail page
+        this.cacheProducts();
+
       } catch (err) {
         this.error = err.message
         console.error('Error fetching products:', err)
+        this.setDemoProducts(); // Fallback to demo products
       } finally {
         this.isLoading = false
       }
+    },
+    
+    // Cache products for the detail page to use
+    cacheProducts() {
+      try {
+        // Store each product in localStorage for the detail page to use
+        this.allProducts.forEach(product => {
+          this.productCache[product.id] = product;
+        });
+        
+        // Store in localStorage with a size limit
+        const cacheSubset = {};
+        // Only cache the first 20 products to avoid localStorage size limits
+        const productsToCache = this.allProducts.slice(0, 20);
+        productsToCache.forEach(product => {
+          cacheSubset[product.id] = product;
+        });
+        
+        localStorage.setItem('sustainamart-product-cache', JSON.stringify(cacheSubset));
+      } catch (error) {
+        console.error('Error caching products:', error);
+      }
+    },
+    
+    // Fallback to demo products if API fails
+    setDemoProducts() {
+      this.allProducts = [
+        {
+          id: 'asgaard-sofa',
+          name: 'Asgaard sofa',
+          description: 'Buy sustainable furniture for your home',
+          price: 43.40,
+          image: '/placeholder.svg?height=200&width=300',
+          category: 'Furniture',
+          tag: 'New',
+          tagClass: 'new'
+        },
+        {
+          id: 'syltherine',
+          name: 'Syltherine',
+          description: 'Stylish cafe chair',
+          price: 29.30,
+          originalPrice: 32.80,
+          image: '/placeholder.svg?height=200&width=300',
+          category: 'Furniture',
+          tag: 'Sale',
+          tagClass: 'sale'
+        },
+        {
+          id: 'leviosa',
+          name: 'Leviosa',
+          description: 'Stylish cafe chair',
+          price: 21.30,
+          image: '/placeholder.svg?height=200&width=300',
+          category: 'Furniture'
+        },
+        {
+          id: 'lolito',
+          name: 'Lolito',
+          description: 'Luxury big sofa',
+          price: 35.20,
+          originalPrice: 48.00,
+          image: '/placeholder.svg?height=200&width=300',
+          category: 'Furniture',
+          tag: 'Sale',
+          tagClass: 'sale'
+        },
+        {
+          id: 'respira',
+          name: 'Respira',
+          description: 'Outdoor bar table and stool',
+          price: 34.30,
+          image: '/placeholder.svg?height=200&width=300',
+          category: 'Furniture',
+          tag: 'New',
+          tagClass: 'new'
+        }
+      ];
+      
+      // Initialize quantities for demo products
+      const quantities = {};
+      this.allProducts.forEach(product => {
+        quantities[product.id] = 1;
+      });
+      this.productQuantities = quantities;
+      
+      // Cache demo products
+      this.cacheProducts();
     },
 
     changePage(page) {
@@ -373,7 +478,6 @@ export default {
     showCartNotification(message) {
       this.notificationMessage = message;
       this.showNotification = true;
-      // No auto-hide - notification stays until user closes it
     },
     
     // Hide notification
@@ -402,16 +506,26 @@ export default {
       if (existingProductIndex !== -1) {
         // Update quantity if product already exists in cart
         const updatedCart = [...this.cart];
-        updatedCart[existingProductIndex].quantity = quantity;
+        updatedCart[existingProductIndex].quantity += quantity;
         this.cart = updatedCart;
       } else {
         // Add new product to cart
         const cartItem = {
-          ...product,
-          quantity: quantity
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          quantity: quantity,
+          image: product.image
         };
 
         this.cart.push(cartItem);
+      }
+
+      // Save cart to localStorage
+      try {
+        localStorage.setItem('sustainamart-cart', JSON.stringify(this.cart));
+      } catch (error) {
+        console.error('Error saving cart to localStorage:', error);
       }
 
       // Show notification popup
@@ -419,13 +533,6 @@ export default {
       this.showCartNotification(message);
       
       console.log('Cart updated:', this.cart);
-    },
-    
-    viewProductDetails(productId) {
-      // Navigate to product detail page
-      this.$router.push(`/product/${productId}`).then(() => {
-        window.scrollTo(0, 0);
-      });
     }
   },
   created() {
@@ -441,18 +548,16 @@ import {
   Search as SearchIcon, 
   Heart as HeartIcon, 
   ShoppingCart as ShoppingCartIcon,
-  ChevronRight as ChevronRightIcon,
   Trophy as TrophyIcon,
   ShieldCheck as ShieldCheckIcon,
   Truck as TruckIcon,
   Headphones as HeadphonesIcon,
-  CheckCircle as CheckCircleIcon,
   X as XIcon
 } from 'lucide-vue-next'
 </script>
 
 <style scoped>
-/* Reset and Base Styles */
+/* Base Styles */
 * {
   margin: 0;
   padding: 0;
@@ -485,101 +590,6 @@ button {
   cursor: pointer;
   border: none;
   background: none;
-}
-
-/* Header Styles */
-.header {
-  padding: 15px 0;
-  border-bottom: 1px solid #eee;
-  background-color: #fff;
-}
-
-.header-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.logo {
-  font-size: 24px;
-  font-weight: 700;
-  color: #704116;
-}
-
-.main-nav ul {
-  display: flex;
-  gap: 20px;
-}
-
-.main-nav a {
-  font-size: 14px;
-  font-weight: 500;
-  transition: color 0.3s;
-}
-
-.main-nav a:hover,
-.main-nav a.active {
-  color: #704116;
-}
-
-.header-icons {
-  display: flex;
-  gap: 15px;
-}
-
-.icon-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-
-.icon {
-  width: 20px;
-  height: 20px;
-  background-color: #333;
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
-}
-
-.user-icon {
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>');
-}
-
-.search-icon {
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
-}
-
-.wishlist-icon {
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>');
-}
-
-.cart-icon {
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>');
-}
-
-/* Cart Icon and Mini Cart */
-.cart-icon-wrapper {
-  position: relative;
-  cursor: pointer;
-}
-
-.cart-count {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background-color: #e97171;
-  color: white;
-  font-size: 10px;
-  font-weight: bold;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* Hero Banner */
@@ -619,7 +629,7 @@ button {
   font-weight: bold;
   color: #704116;
   margin-bottom: 0.5rem;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); /* Optional: adds slight shadow to make text more readable */
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
 }
 
 .breadcrumb {
@@ -1153,6 +1163,57 @@ button {
   .notification-icon-container {
     margin-right: 0;
     margin-bottom: 15px;
+  }
+}
+
+/* Responsive Styles */
+@media (max-width: 992px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebar {
+    margin-bottom: 20px;
+  }
+  
+  .features-section {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .results-info {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .sort-options {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .features-section {
+    grid-template-columns: 1fr;
+  }
+  
+  .hero-title {
+    font-size: 2rem;
   }
 }
 </style>

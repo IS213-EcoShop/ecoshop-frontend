@@ -1,1114 +1,1215 @@
-<template>
-    <div class="product-detail">
-      <!-- Header -->
-      <header class="header">
-        <div class="container header-container">
-          <div class="logo">SustainaMart</div>
-          <nav class="main-nav">
-            <ul>
-              <li><a href="#">About Us</a></li>
-              <li><a href="#" class="active">Marketplace</a></li>
-              <li><a href="#">Trade-in Service</a></li>
-              <li><a href="#">Sustainability Challenges & Rewards</a></li>
-              <li><a href="#">Contact Us</a></li>
-            </ul>
-          </nav>
-          <div class="header-icons">
-            <a href="#" class="icon-link"><span class="icon user-icon"></span></a>
-            <a href="#" class="icon-link"><span class="icon search-icon"></span></a>
-            <a href="#" class="icon-link"><span class="icon wishlist-icon"></span></a>
-            <a href="#" class="icon-link cart-icon-wrapper">
-              <span class="icon cart-icon"></span>
-              <span v-if="cart.length > 0" class="cart-count">{{ cart.length }}</span>
-              <!-- Mini Cart Dropdown -->
-              <div v-if="showMiniCart && cart.length > 0" class="mini-cart">
-                <h4>Your Cart ({{ cart.length }} items)</h4>
-                <div class="mini-cart-items">
-                  <div v-for="(item, index) in cart" :key="index" class="mini-cart-item">
-                    <img :src="item.image" :alt="item.name" class="mini-cart-image">
-                    <div class="mini-cart-details">
-                      <p class="mini-cart-name">{{ item.name }}</p>
-                      <p class="mini-cart-price">${{ item.price.toFixed(2) }} x {{ item.quantity }}</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="mini-cart-footer">
-                  <button class="view-cart-btn">View Cart</button>
-                </div>
-              </div>
-            </a>
-          </div>
-        </div>
-      </header>
-  
-      <!-- Breadcrumb -->
+```vue type="vue" project="SustainaMart" file="ProductDetail.vue"
+[v0-no-op-code-block-prefix]<template>
+  <div class="product-detail-page">
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>Loading product details...</p>
+    </div>
+    
+    <!-- Error State -->
+    <div v-else-if="error" class="error-container">
+      <h2>Error Loading Product</h2>
+      <p>{{ error }}</p>
+      <button @click="fetchProductDetails" class="retry-btn">Try Again</button>
+    </div>
+    
+    <!-- Product Content -->
+    <template v-else>
+      <!-- Breadcrumb Navigation -->
       <div class="breadcrumb-container">
         <div class="container">
           <div class="breadcrumb">
-            <a href="#">Marketplace</a> &gt; <a href="#">Product</a> &gt; <span>{{ product.name }}</span>
+            <router-link to="/marketplace" class="breadcrumb-link">Marketplace</router-link>
+            <chevron-right-icon class="breadcrumb-icon" />
+            <span class="breadcrumb-current">{{ product.name }}</span>
           </div>
         </div>
       </div>
-  
-      <!-- Product Section -->
-      <section class="product-section">
-        <div class="container">
-          <div class="product-layout">
-            <!-- Product Gallery -->
-            <div class="product-gallery">
-              <div class="gallery-thumbnails">
-                <div 
-                  v-for="(image, index) in productImages" 
-                  :key="index" 
-                  class="thumbnail" 
-                  :class="{ active: selectedImage === index }"
-                  @click="selectedImage = index"
-                >
-                  <img :src="image" :alt="`${product.name} - View ${index + 1}`">
-                </div>
-              </div>
-              <div class="gallery-main">
-                <img :src="productImages[selectedImage]" :alt="product.name">
-              </div>
+
+      <!-- Product Detail Section -->
+      <div class="container">
+        <div class="product-detail">
+          <!-- Product Images - Simplified to just show the main image -->
+          <div class="product-images simplified">
+            <div class="main-image">
+              <img :src="productImages[0]" :alt="product.name" />
+              <span v-if="product.tag" class="product-tag" :class="product.tagClass">
+                {{ product.tag }}
+              </span>
             </div>
-  
-            <!-- Product Info -->
-            <div class="product-info">
-              <h1 class="product-title">{{ product.name }}</h1>
-              <div class="product-price">${{ product.price.toFixed(2) }}</div>
-              
-              <div class="product-rating">
-                <div class="stars">
-                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= product.rating }">★</span>
-                </div>
-                <span class="review-count">{{ product.reviewCount }} Customer Review(s)</span>
+          </div>
+
+          <!-- Product Info -->
+          <div class="product-info">
+            <h1 class="product-title">{{ product.name }}</h1>
+            <div class="product-price">${{ product.price.toFixed(2) }}</div>
+            
+            <!-- Rating -->
+            <div class="product-rating">
+              <div class="stars">
+                <star-icon v-for="i in Math.floor(product.rating || 5)" :key="i" class="star filled" />
+                <star-icon v-if="(product.rating || 5) % 1 >= 0.5" class="star half-filled" />
               </div>
-              
-              <p class="product-description">{{ product.description }}</p>
-              
-              <!-- Product Options -->
-              <div class="product-options">
-                <div class="option-group">
-                  <h3>Size</h3>
-                  <div class="option-buttons">
-                    <button 
-                      v-for="size in product.sizes" 
-                      :key="size" 
-                      class="option-button" 
-                      :class="{ active: selectedSize === size }"
-                      @click="selectedSize = size"
-                    >
-                      {{ size }}
-                    </button>
-                  </div>
-                </div>
-                
-                <div class="option-group">
-                  <h3>Color</h3>
-                  <div class="color-options">
-                    <button 
-                      v-for="color in product.colors" 
-                      :key="color.name" 
-                      class="color-button" 
-                      :class="{ active: selectedColor === color.name }"
-                      :style="{ backgroundColor: color.hex }"
-                      @click="selectedColor = color.name"
-                    ></button>
-                  </div>
-                </div>
+              <span class="review-count">{{ product.reviewCount }} Customer Review(s)</span>
+            </div>
+            
+            <!-- Description -->
+            <p class="product-description">{{ product.description }}</p>
+            
+            <!-- Quantity and Add to Cart -->
+            <div class="cart-actions">
+              <div class="quantity-selector">
+                <button @click="decrementQuantity" class="quantity-btn">-</button>
+                <span class="quantity-value">{{ quantity }}</span>
+                <button @click="incrementQuantity" class="quantity-btn">+</button>
               </div>
-              
-              <!-- Add to Cart -->
-              <div class="add-to-cart">
-                <div class="quantity-selector">
-                  <button @click="decreaseQuantity" class="quantity-btn">-</button>
-                  <span class="quantity">{{ quantity }}</span>
-                  <button @click="increaseQuantity" class="quantity-btn">+</button>
-                </div>
-                <button class="add-to-cart-btn" @click="addToCart(product)">Add To Cart</button>
-              </div>
-              
-              <!-- Added to Cart Notification -->
-              <div v-if="showAddedNotification" class="added-notification">
-                <span class="check-icon">✓</span> Product added to cart!
+              <button @click="addToCart" class="add-to-cart-btn">Add To Cart</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommended Products Section -->
+      <div v-if="!isFromRecommendation" class="recommended-products container">
+        <h2 class="section-title">Recommended Products</h2>
+        
+        <div class="product-cards" ref="productCarousel">
+          <div v-for="product in recommendedProducts" :key="product.id" class="product-card">
+            <div class="product-image">
+              <img :src="product.image" :alt="product.name">
+              <span v-if="product.tag" class="product-tag" :class="product.tagClass">
+                {{ product.tag }}
+              </span>
+            </div>
+            <div class="product-card-info">
+              <router-link 
+                :to="{
+                  path: `/product/${product.id}`,
+                  query: { fromRecommendation: true }
+                }" 
+                class="product-card-link">
+                <h3 class="product-card-title">{{ product.name }}</h3>
+              </router-link>
+              <p class="product-card-category">{{ product.category }}</p>
+              <div class="product-card-price">
+                <span class="current-price">${{ product.price.toFixed(2) }}</span>
+                <span v-if="product.originalPrice" class="original-price">${{ product.originalPrice.toFixed(2) }}</span>
               </div>
             </div>
           </div>
         </div>
-      </section>
-  
-      <!-- Recommended Products -->
-      <section class="recommended-section">
-        <div class="container">
-          <h2 class="section-title">Recommended Products</h2>
-          <div class="recommended-products">
-            <div 
-              v-for="product in recommendedProducts" 
-              :key="product.id" 
-              class="product-card"
-            >
-              <!-- Product Badges -->
-              <div class="product-badges">
-                <div class="product-badge discount-badge" v-if="product.badge">{{ product.badge }}</div>
-                <div 
-                  v-if="product.sustainabilityTag" 
-                  class="product-badge sustainability-badge"
-                  :class="getSustainabilityClass(product.sustainabilityTag)"
-                >
-                  {{ product.sustainabilityTag }}
-                </div>
-              </div>
-              
-              <div class="product-image">
-                <img :src="product.image" :alt="product.name">
-              </div>
-              <div class="product-details">
-                <h3 class="product-name">{{ product.name }}</h3>
-                <p class="product-category">{{ product.category }}</p>
-                <div class="product-price">
-                  <span class="current-price">${{ product.price.toFixed(2) }}</span>
-                  <span class="original-price" v-if="product.originalPrice">${{ product.originalPrice.toFixed(2) }}</span>
-                </div>
-                <button class="add-to-cart-btn product-card-btn" @click="addToCart(product, 1)">Add to Cart</button>
-              </div>
-            </div>
+      </div>
+    </template>
+
+    <!-- Cart Notification Popup -->
+    <div class="notification-popup" v-if="showNotification" :class="{ 'show': showNotification }">
+      <div class="notification-content">
+        <h3 class="notification-title">Item Added to Cart <button class="close-notification" @click="hideNotification">×</button></h3>
+        <div class="notification-body">
+          <div class="notification-icon-container">
+            <check-circle-icon class="notification-icon" />
           </div>
-          <div class="show-more">
-            <button class="show-more-btn">Show More</button>
-          </div>
+          <p class="notification-message">{{ notificationMessage }}</p>
         </div>
-      </section>
-  
-      <!-- Footer -->
-      <footer class="footer">
-        <div class="container">
-          <div class="footer-content">
-            <div class="footer-column">
-              <h3 class="footer-logo">SustainaMart</h3>
-              <address>
-                2 Bayfront Avenue,<br>
-                Unit #1-41, The Shoppes at Marina Bay Sands,<br>
-                Singapore 018972, Singapore
-              </address>
-            </div>
-            <div class="footer-column">
-              <h4>Links</h4>
-              <ul>
-                <li><a href="#">About Us</a></li>
-                <li><a href="#">Marketplace</a></li>
-                <li><a href="#">Trade-in Service</a></li>
-                <li><a href="#">Sustainability Challenges</a></li>
-                <li><a href="#">Rewards</a></li>
-              </ul>
-            </div>
-            <div class="footer-column">
-              <h4>Help</h4>
-              <ul>
-                <li><a href="#">Payment Options</a></li>
-                <li><a href="#">Returns</a></li>
-                <li><a href="#">Privacy Policies</a></li>
-                <li><a href="#">FAQs</a></li>
-              </ul>
-            </div>
-            <div class="footer-column">
-              <h4>Newsletter</h4>
-              <div class="newsletter-form">
-                <input type="email" placeholder="Enter Your Email Address" class="newsletter-input">
-                <button class="subscribe-btn">SUBSCRIBE</button>
-              </div>
-            </div>
-          </div>
-          <div class="copyright">
-            <p>© 2025 SustainaMart. All rights reserved</p>
-          </div>
-        </div>
-      </footer>
+        <button class="view-cart-btn" @click="navigateToCart">View Cart</button>
+      </div>
     </div>
-  </template>
-  
-  <script>
-  export default {
-    name: 'ProductDetail',
-    data() {
-      return {
-        selectedImage: 0,
-        quantity: 1,
-        selectedSize: 'S',
-        selectedColor: 'Purple',
-        showMiniCart: false,
-        showAddedNotification: false,
-        cart: [],
-        product: {
-          id: 16,
-          name: 'Asgaard Sofa',
-          price: 43.40,
-          image: '/placeholder.svg?height=400&width=400',
-          rating: 4.5,
-          reviewCount: 5,
-          description: 'Setting the bar as one of the loudest speakers in its class, the Asgaard is a compact, stout-hearted hero with a well-balanced audio which boasts a clear midrange and extended highs for a sound that is both articulate and pronounced.',
-          sizes: ['S', 'M', 'L'],
-          colors: [
-            { name: 'Purple', hex: '#816dfa' },
-            { name: 'Black', hex: '#000000' },
-            { name: 'Gold', hex: '#b88e2f' }
-          ],
-          sustainabilityTag: 'Low Waste'
-        },
-        recommendedProducts: [
-          {
-            id: 1,
-            name: 'Syltherine',
-            category: 'Stylish cafe chair',
-            price: 29.30,
-            originalPrice: 42.80,
-            image: '/placeholder.svg?height=200&width=200',
-            badge: '-30%',
-            sustainabilityTag: 'Low Waste'
-          },
-          {
-            id: 2,
-            name: 'Leviosa',
-            category: 'Stylish cafe chair',
-            price: 21.30,
-            image: '/placeholder.svg?height=200&width=200',
-            sustainabilityTag: 'Plastic-Free'
-          },
-          {
-            id: 3,
-            name: 'Lolito',
-            category: 'Luxury big sofa',
-            price: 35.20,
-            originalPrice: 48.00,
-            image: '/placeholder.svg?height=200&width=200',
-            badge: '-50%',
-            sustainabilityTag: 'Biodegradable'
-          },
-          {
-            id: 4,
-            name: 'Respira',
-            category: 'Outdoor bar table and stool',
-            price: 34.30,
-            image: '/placeholder.svg?height=200&width=200',
-            badge: 'New',
-            sustainabilityTag: 'Cruelty-Free'
+  </div>
+</template>
+
+<script>
+import { 
+  ChevronRight as ChevronRightIcon,
+  ChevronLeft as ChevronLeftIcon,
+  Star as StarIcon,
+  CheckCircle as CheckCircleIcon
+} from 'lucide-vue-next'
+
+export default {
+  name: 'ProductDetail',
+  components: {
+    ChevronRightIcon,
+    ChevronLeftIcon,
+    StarIcon,
+    CheckCircleIcon
+  },
+  props: {
+    // Allow the id to be passed as a prop from the router
+    id: {
+      type: String,
+      default: null
+    }
+  },
+  data() {
+    return {
+      productId: null,
+      product: {
+        id: '',
+        name: '',
+        price: 0,
+        description: '',
+        reviewCount: 0,
+        rating: 5,
+        category: '',
+        image: ''
+      },
+      selectedImageIndex: 0,
+      quantity: 1,
+      showNotification: false,
+      notificationMessage: '',
+      recommendedProducts: [],
+      isLoading: true,
+      error: null,
+      productCache: {}, // Cache for product data
+      recommendedCache: {} // Cache for recommended products
+    };
+  },
+  computed: {
+    productImages() {
+      // In a real app, these would come from the product data
+      // For now, we'll use the main product image only
+      if (this.product.image) {
+        return [this.product.image];
+      }
+      return ['/placeholder.svg?height=400&width=500'];
+    },
+    isFromRecommendation() {
+      return this.$route.query.fromRecommendation === 'true';
+    }
+  },
+  watch: {
+    // Watch for route changes to update the product when navigating between products
+    '$route': {
+      handler(newRoute, oldRoute) {
+        const newId = newRoute.params.id;
+        if (newId && (newId !== this.productId || newRoute.query.fromRecommendation !== oldRoute?.query.fromRecommendation)) {
+          console.log('Route changed, loading new product:', newId);
+          this.productId = newId;
+          this.resetProductView();
+          this.fetchProductDetails();
+        }
+      },
+      immediate: true,
+      deep: true
+    }
+  },
+  methods: {
+    resetProductView() {
+      // Reset view state when changing products
+      this.selectedImageIndex = 0;
+      this.quantity = 1;
+      window.scrollTo(0, 0);
+    },
+    incrementQuantity() {
+      this.quantity++;
+    },
+    decrementQuantity() {
+      if (this.quantity > 1) {
+        this.quantity--;
+      }
+    },
+    addToCart() {
+      try {
+        // Create cart item
+        const cartItem = {
+          id: this.product.id,
+          name: this.product.name,
+          price: this.product.price,
+          quantity: this.quantity,
+          image: this.product.image
+        };
+        
+        // Check if we have a cart in localStorage
+        let cart = [];
+        const storedCart = localStorage.getItem('sustainamart-cart');
+        if (storedCart) {
+          try {
+            cart = JSON.parse(storedCart);
+          } catch (e) {
+            console.error('Error parsing cart from localStorage:', e);
+            cart = [];
           }
-        ]
-      }
-    },
-    computed: {
-      productImages() {
-        // In a real app, these would be actual product images
-        return [
-          '/placeholder.svg?height=400&width=400',
-          '/placeholder.svg?height=400&width=400&text=Image2',
-          '/placeholder.svg?height=400&width=400&text=Image3',
-          '/placeholder.svg?height=400&width=400&text=Image4'
-        ];
-      }
-    },
-    mounted() {
-      // Add click event listener to document to close mini cart when clicking outside
-      document.addEventListener('click', this.handleOutsideClick);
-    },
-    beforeUnmount() {
-      // Remove event listener when component is destroyed
-      document.removeEventListener('click', this.handleOutsideClick);
-    },
-    methods: {
-      getSustainabilityClass(tag) {
-        switch(tag) {
-          case 'Low Waste':
-            return 'low-waste';
-          case 'Plastic-Free':
-            return 'plastic-free';
-          case 'Biodegradable':
-            return 'biodegradable';
-          case 'Cruelty-Free':
-            return 'cruelty-free';
-          default:
-            return '';
         }
-      },
-      increaseQuantity() {
-        this.quantity++;
-      },
-      decreaseQuantity() {
-        if (this.quantity > 1) {
-          this.quantity--;
-        }
-      },
-      addToCart(product, qty = null) {
-        // Use the specified quantity or the current quantity state
-        const quantityToAdd = qty !== null ? qty : this.quantity;
         
-        // Check if product is already in cart
-        const existingProductIndex = this.cart.findIndex(item => 
-          item.id === product.id && 
-          (product.id !== this.product.id || 
-            (this.selectedSize === item.size && this.selectedColor === item.color))
-        );
+        // Check if product already exists in cart
+        const existingItemIndex = cart.findIndex(item => item.id === cartItem.id);
         
-        if (existingProductIndex !== -1) {
-          // Update quantity if product already exists in cart
-          const updatedCart = [...this.cart];
-          updatedCart[existingProductIndex].quantity += quantityToAdd;
-          this.cart = updatedCart;
+        if (existingItemIndex !== -1) {
+          // Update quantity if product already exists
+          cart[existingItemIndex].quantity += this.quantity;
         } else {
-          // Add new product to cart
-          const cartItem = {
-            ...product,
-            quantity: quantityToAdd,
-            // Add selected options for main product
-            size: product.id === this.product.id ? this.selectedSize : null,
-            color: product.id === this.product.id ? this.selectedColor : null
-          };
-          
-          this.cart.push(cartItem);
+          // Add new item to cart
+          cart.push(cartItem);
         }
+        
+        // Save updated cart to localStorage
+        localStorage.setItem('sustainamart-cart', JSON.stringify(cart));
         
         // Show notification
-        this.showAddedNotification = true;
-        setTimeout(() => {
-          this.showAddedNotification = false;
-        }, 3000);
+        this.notificationMessage = `${this.quantity} ${this.product.name}${this.quantity > 1 ? 's' : ''} ${this.quantity > 1 ? 'have' : 'has'} been added to your cart successfully!`;
+        this.showNotification = true;
         
-        // Show mini cart
-        this.showMiniCart = true;
-      },
-      toggleMiniCart(event) {
-        event.stopPropagation();
-        this.showMiniCart = !this.showMiniCart;
-      },
-      handleOutsideClick(event) {
-        const cartIconWrapper = document.querySelector('.cart-icon-wrapper');
-        if (this.showMiniCart && cartIconWrapper && !cartIconWrapper.contains(event.target)) {
-          this.showMiniCart = false;
-        }
+        // Emit event for parent components
+        this.$emit('cart-updated', cart);
+        
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+        alert('Failed to add item to cart. Please try again.');
       }
+    },
+    hideNotification() {
+      this.showNotification = false;
+    },
+    navigateToCart() {
+      // Hide the notification
+      this.hideNotification();
+      
+      // Navigate to Cart.vue using Vue Router
+      this.$router.push('/cart').catch(err => {
+        if (err.name !== 'NavigationDuplicated') {
+          console.error('Navigation error:', err);
+        }
+      });
+    },
+    async fetchProductDetails() {
+      // Don't show loading if we have cached data
+      if (!this.productCache[this.productId]) {
+        this.isLoading = true;
+      }
+      this.error = null;
+      
+      try {
+        // Get product ID from props or route params
+        this.productId = this.id || this.$route.params.id;
+
+        // Log the product ID we're trying to fetch
+        console.log('Attempting to fetch product with ID:', this.productId);
+
+        // Check if the ID is a string that needs to be converted to a number
+        // This helps match numeric IDs that might be passed as strings
+        if (this.productId && !isNaN(parseInt(this.productId))) {
+          const numericId = parseInt(this.productId).toString();
+          console.log('Converting to numeric ID:', numericId);
+          this.productId = numericId;
+        }
+        
+        if (!this.productId) {
+          throw new Error('Product ID is missing');
+        }
+        
+        console.log('Fetching product details for ID:', this.productId);
+        
+        // Check if we have cached data for this product
+        if (this.productCache[this.productId]) {
+          console.log('Using cached product data for:', this.productId);
+          this.product = { ...this.productCache[this.productId] };
+          
+          // Still fetch recommended products if needed
+          if (!this.recommendedCache[this.productId]) {
+            await this.fetchRecommendedProducts();
+          } else {
+            console.log('Using cached recommended products');
+            this.recommendedProducts = [...this.recommendedCache[this.productId]];
+          }
+          
+          this.isLoading = false;
+          return;
+        }
+        
+        // In a real app, you would fetch from your API
+        try {
+          console.log('Making API request for product:', this.productId);
+          const response = await fetch(`https://personal-o2kymv2n.outsystemscloud.com/SustainaMart/rest/v1/product/${this.productId}`);
+          
+          if (!response.ok) {
+            throw new Error(`API returned status ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log('API response data:', data);
+          
+          if (data && data.Product) {
+            // Update product data from API response
+            this.product = {
+              id: data.Product.productId || this.productId,
+              name: data.Product.Name || 'Product Name',
+              price: data.Product.Price || 0,
+              description: data.Product.Description || 'No description available',
+              reviewCount: data.Product.ReviewCount || 0,
+              rating: data.Product.Rating || 5,
+              category: data.Product.Category || '',
+              image: data.Product.ImageURL || '/placeholder.svg?height=400&width=500'
+            };
+            
+            console.log('Successfully loaded product data:', this.product.name);
+            
+            // Cache the product data
+            this.productCache[this.productId] = { ...this.product };
+          } else {
+            console.log('API returned unexpected data format, using demo data');
+            // If API doesn't return expected data, use demo data
+            this.setDemoProduct();
+          }
+        } catch (apiError) {
+          console.error('API error:', apiError);
+          // Fallback to demo data if API fails
+          this.setDemoProduct();
+        }
+        
+        // Fetch recommended products
+        await this.fetchRecommendedProducts();
+        
+      } catch (error) {
+        console.error('Error fetching product details:', error);
+        this.error = error.message || 'Failed to load product details';
+        this.setDemoProduct(); // Still set demo product even on error
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    async fetchRecommendedProducts() {
+      try {
+        // Check if we have cached recommendations
+        if (this.recommendedCache[this.productId]) {
+          this.recommendedProducts = this.recommendedCache[this.productId];
+          return;
+        }
+        
+        // Try to fetch recommended products from API
+        const response = await fetch(`https://personal-o2kymv2n.outsystemscloud.com/SustainaMart/rest/v1/recommendedproducts/${this.productId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data && Array.isArray(data.Products)) {
+            this.recommendedProducts = data.Products.map(p => ({
+              id: p.productId,
+              name: p.Name,
+              category: p.Category,
+              price: p.Price,
+              originalPrice: p.OriginalPrice,
+              image: p.ImageURL || '/placeholder.svg?height=200&width=300',
+              tag: p.TagText,
+              tagClass: p.TagClass
+            }));
+            
+            // Cache the recommendations
+            this.recommendedCache[this.productId] = [...this.recommendedProducts];
+            return;
+          }
+        }
+        
+        // Fallback to demo data if API fails or returns unexpected format
+        this.setDemoRecommendedProducts();
+      } catch (error) {
+        console.error('Error fetching recommended products:', error);
+        // Don't fail the whole page if recommended products fail to load
+        this.setDemoRecommendedProducts();
+      }
+    },
+    setDemoProduct() {
+      console.log('Setting demo product data for ID:', this.productId);
+      
+      // Map of known product IDs to their demo data
+      const productMap = {
+        // Original demo products
+        'asgaard-sofa': {
+          id: 'asgaard-sofa',
+          name: 'Asgaard sofa',
+          price: 43.40,
+          description: 'Setting the bar as one of the loudest speakers in its class, the Kilburn is a compact, stout-hearted hero with a well-balanced audio which boasts a clear midrange and extended highs for a sound.',
+          reviewCount: 5,
+          rating: 4.5,
+          category: 'Furniture',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        'syltherine': {
+          id: 'syltherine',
+          name: 'Syltherine',
+          price: 29.30,
+          description: 'Syltherine is an eco-friendly cafe chair made from sustainable materials. Perfect for your dining area or cafe space.',
+          reviewCount: 3,
+          rating: 4.0,
+          category: 'Stylish cafe chair',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        'leviosa': {
+          id: 'leviosa',
+          name: 'Leviosa',
+          price: 21.30,
+          description: 'The Leviosa chair combines comfort and style with sustainable materials. Its ergonomic design makes it perfect for long sitting sessions.',
+          reviewCount: 7,
+          rating: 4.8,
+          category: 'Stylish cafe chair',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        'lolito': {
+          id: 'lolito',
+          name: 'Lolito',
+          price: 35.20,
+          description: 'The Lolito luxury sofa is spacious and comfortable, perfect for your living room. Made with eco-friendly materials and built to last.',
+          reviewCount: 4,
+          rating: 4.2,
+          category: 'Luxury big sofa',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        'respira': {
+          id: 'respira',
+          name: 'Respira',
+          price: 34.30,
+          description: 'The Respira outdoor set includes a stylish bar table and stool, perfect for your patio or garden. Weather-resistant and made from sustainable materials.',
+          reviewCount: 2,
+          rating: 4.5,
+          category: 'Outdoor bar table and stool',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        // Marketplace products with numeric IDs
+        '1': {
+          id: '1',
+          name: 'Aloe Facial Toner',
+          price: 26.38,
+          description: 'Refresh and balance your skin with our natural Aloe Facial Toner. Made with organic aloe vera and cucumber extract, this alcohol-free formula gently removes impurities while maintaining your skin\'s natural pH balance.',
+          reviewCount: 42,
+          rating: 4.7,
+          category: 'Skincare',
+          image: '/placeholder.svg?height=400&width=500',
+          tag: 'Cruelty Free',
+          tagClass: 'cruelty-free'
+        },
+        '2': {
+          id: '2',
+          name: 'Bamboo Toothbrush',
+          price: 8.99,
+          description: 'Replace your plastic toothbrush with our biodegradable bamboo alternative. Features soft BPA-free bristles and a comfortable ergonomic handle made from sustainably harvested bamboo.',
+          reviewCount: 28,
+          rating: 4.3,
+          category: 'Personal Care',
+          image: '/placeholder.svg?height=400&width=500',
+          tag: 'Plastic Free',
+          tagClass: 'plastic-free'
+        },
+        '3': {
+          id: '3',
+          name: 'Organic Cotton Tote',
+          price: 15.99,
+          description: 'Our durable organic cotton tote is perfect for shopping, beach trips, or everyday use. Made from 100% GOTS certified organic cotton with reinforced stitching to handle heavy loads.',
+          reviewCount: 56,
+          rating: 4.8,
+          category: 'Bags & Accessories',
+          image: '/placeholder.svg?height=400&width=500',
+          tag: 'Low Waste',
+          tagClass: 'low-waste'
+        },
+        '4': {
+          id: '4',
+          name: 'Reusable Produce Bags',
+          price: 12.50,
+          description: 'Set of 5 mesh produce bags in various sizes, perfect for grocery shopping. Made from recycled polyester, these washable bags replace single-use plastic produce bags and let cashiers see contents easily.',
+          reviewCount: 19,
+          rating: 4.2,
+          category: 'Kitchen & Dining',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        '5': {
+          id: '5',
+          name: 'Stainless Steel Straw Set',
+          price: 14.99,
+          description: 'Our premium stainless steel straw set includes 4 straight straws, 4 bent straws, 2 cleaning brushes, and a cotton carrying pouch. Dishwasher safe and perfect for hot and cold beverages.',
+          reviewCount: 37,
+          rating: 4.6,
+          category: 'Kitchen & Dining',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        '6': {
+          id: '6',
+          name: 'Beeswax Food Wraps',
+          price: 18.95,
+          description: 'Replace plastic wrap with our reusable beeswax food wraps. Set includes 3 different sizes to cover various containers or wrap foods directly. Washable, biodegradable, and lasts up to a year with proper care.',
+          reviewCount: 31,
+          rating: 4.4,
+          category: 'Kitchen & Dining',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        '7': {
+          id: '7',
+          name: 'Recycled Paper Journal',
+          price: 11.25,
+          description: 'Our hardcover journal features 160 pages of 100% recycled, acid-free paper. Perfect for journaling, sketching, or note-taking with a lay-flat binding and an elastic closure band.',
+          reviewCount: 24,
+          rating: 4.1,
+          category: 'Stationery',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        '8': {
+          id: '8',
+          name: 'Organic Lip Balm Set',
+          price: 9.99,
+          description: 'Set of 4 organic lip balms in different natural flavors. Made with organic shea butter, coconut oil, and beeswax to keep your lips moisturized and protected from the elements.',
+          reviewCount: 48,
+          rating: 4.5,
+          category: 'Personal Care',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        '9': {
+          id: '9',
+          name: 'Bamboo Cutlery Set',
+          price: 13.50,
+          description: 'Portable bamboo cutlery set including fork, knife, spoon, chopsticks, and a straw with a cleaning brush. Comes in a convenient canvas carrying case with a carabiner clip.',
+          reviewCount: 53,
+          rating: 4.7,
+          category: 'Kitchen & Dining',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        '10': {
+          id: '10',
+          name: 'Natural Loofah Sponges',
+          price: 7.95,
+          description: 'Pack of 3 natural loofah sponges for exfoliating skin in the shower or cleaning around the house. Biodegradable, compostable, and grown without pesticides or chemicals.',
+          reviewCount: 17,
+          rating: 4.0,
+          category: 'Personal Care',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        '11': {
+          id: '11',
+          name: 'Wool Dryer Balls',
+          price: 16.99,
+          description: 'Set of 6 premium New Zealand wool dryer balls that naturally soften laundry and reduce drying time by up to 25%. A sustainable alternative to disposable dryer sheets, lasting for over 1,000 loads.',
+          reviewCount: 22,
+          rating: 4.3,
+          category: 'Home & Laundry',
+          image: '/placeholder.svg?height=400&width=500'
+        },
+        '12': {
+          id: '12',
+          name: 'Organic Cotton Napkins',
+          price: 19.50,
+          description: 'Set of 6 organic cotton napkins in natural color. These reusable napkins are soft, absorbent, and become softer with each wash. Perfect for everyday use or special occasions.',
+          reviewCount: 39,
+          rating: 4.6,
+          category: 'Kitchen & Dining',
+          image: '/placeholder.svg?height=400&width=500'
+        }
+      };
+      
+      // Check if we have demo data for this specific product ID
+      if (productMap[this.productId]) {
+        this.product = { ...productMap[this.productId] };
+        console.log('Using specific demo data for product:', this.product.name);
+      } else {
+        // If no specific demo data, create a generic product with the ID
+        const productNumber = isNaN(parseInt(this.productId)) ? Math.floor(Math.random() * 100) : parseInt(this.productId);
+        
+        this.product = {
+          id: this.productId,
+          name: `Sustainable Product ${productNumber}`,
+          price: (19.99 + (productNumber * 2.5)) % 100,
+          description: `This sustainable product is designed to reduce environmental impact while providing excellent functionality. Perfect for eco-conscious consumers looking to make a difference.`,
+          reviewCount: Math.floor(Math.random() * 50) + 5,
+          rating: (3.5 + (Math.random() * 1.5)).toFixed(1),
+          category: 'Sustainable Living',
+          image: '/placeholder.svg?height=400&width=500'
+        };
+        console.log('Using generic demo data for product:', this.product.name);
+      }
+      
+      // Cache the demo product
+      this.productCache[this.productId] = { ...this.product };
+    },
+    setDemoRecommendedProducts() {
+      // Create different recommendations based on the current product
+      let recommendations = [];
+      
+      // Default recommendations
+      const defaultRecommendations = [
+        {
+          id: 'syltherine',
+          name: 'Syltherine',
+          category: 'Stylish cafe chair',
+          price: 29.30,
+          originalPrice: 32.80,
+          image: '/placeholder.svg?height=200&width=300',
+          tag: 'Low Waste',
+          tagClass: 'low-waste'
+        },
+        {
+          id: 'leviosa',
+          name: 'Leviosa',
+          category: 'Stylish cafe chair',
+          price: 21.30,
+          image: '/placeholder.svg?height=200&width=300',
+          tag: 'Plastic Free',
+          tagClass: 'plastic-free'
+        },
+        {
+          id: 'lolito',
+          name: 'Lolito',
+          category: 'Luxury big sofa',
+          price: 35.20,
+          originalPrice: 48.00,
+          image: '/placeholder.svg?height=200&width=300',
+          tag: 'Cruelty Free',
+          tagClass: 'cruelty-free'
+        },
+        {
+          id: 'respira',
+          name: 'Respira',
+          category: 'Outdoor bar table and stool',
+          price: 34.30,
+          image: '/placeholder.svg?height=200&width=300',
+          tag: 'Low Waste',
+          tagClass: 'low-waste'
+        }
+      ];
+      
+      // Customize recommendations based on current product
+      switch (this.productId) {
+        case 'asgaard-sofa':
+          // For sofas, recommend other furniture
+          recommendations = defaultRecommendations.filter(p => 
+            p.id !== 'asgaard-sofa' && (p.category.includes('sofa') || p.category.includes('Furniture'))
+          );
+          break;
+          
+        case 'syltherine':
+          // For chairs, recommend other chairs and tables
+          recommendations = defaultRecommendations.filter(p => 
+            p.id !== 'syltherine' && (p.category.includes('chair') || p.category.includes('table'))
+          );
+          break;
+          
+        case 'leviosa':
+          // For chairs, recommend other chairs and tables
+          recommendations = defaultRecommendations.filter(p => 
+            p.id !== 'leviosa' && (p.category.includes('chair') || p.category.includes('table'))
+          );
+          break;
+          
+        case 'lolito':
+          // For sofas, recommend other furniture
+          recommendations = defaultRecommendations.filter(p => 
+            p.id !== 'lolito' && (p.category.includes('sofa') || p.category.includes('Furniture'))
+          );
+          break;
+          
+        case 'respira':
+          // For outdoor furniture, recommend other outdoor items
+          recommendations = defaultRecommendations.filter(p => 
+            p.id !== 'respira' && (p.category.includes('Outdoor') || p.category.includes('outdoor'))
+          );
+          break;
+          
+        default:
+          // Use all default recommendations except the current product
+          recommendations = defaultRecommendations.filter(p => p.id !== this.productId);
+          break;
+      }
+      
+      // If we filtered out too many, add some back
+      if (recommendations.length < 2) {
+        const additionalRecommendations = defaultRecommendations.filter(
+          p => p.id !== this.productId && !recommendations.some(r => r.id === p.id)
+        );
+        recommendations = [...recommendations, ...additionalRecommendations];
+      }
+      
+      // Ensure we have at least some recommendations
+      if (recommendations.length === 0) {
+        recommendations = defaultRecommendations.filter(p => p.id !== this.productId);
+      }
+      
+      this.recommendedProducts = recommendations;
+      
+      // Cache the recommendations
+      this.recommendedCache[this.productId] = [...this.recommendedProducts];
     }
+  },
+  created() {
+    // Initial fetch will be handled by the watcher
   }
-  </script>
-  
-  <style scoped>
-  /* Reset and Base Styles */
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+}
+</script>
+
+<style scoped>
+/* Base Styles */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+/* Loading and Error States */
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  padding: 20px;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #704116;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.retry-btn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #704116;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Breadcrumb Styles */
+.breadcrumb-container {
+  background-color: #faf3ea;
+  padding: 15px 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #666;
+}
+
+.breadcrumb-link {
+  color: #666;
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+  color: #704116;
+}
+
+.breadcrumb-icon {
+  width: 16px;
+  height: 16px;
+  margin: 0 8px;
+}
+
+.breadcrumb-current {
+  color: #333;
+}
+
+/* Product Detail Layout */
+.product-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin: 40px 0;
+}
+
+/* Product Images - Simplified */
+.product-images.simplified {
+  display: flex;
+  justify-content: center;
+}
+
+.main-image {
+  width: 100%;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 400px;
+  background-color: #faf3ea;
+  position: relative; /* Add this to position the tag */
+}
+
+.main-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Product Info */
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.product-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #242424;
+  margin: 0;
+}
+
+.product-price {
+  font-size: 24px;
+  font-weight: 600;
+  color: #704116;
+}
+
+.product-rating {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stars {
+  display: flex;
+}
+
+.star {
+  width: 20px;
+  height: 20px;
+  color: #FFD700;
+}
+
+.star.filled {
+  fill: #FFD700;
+}
+
+.star.half-filled {
+  position: relative;
+}
+
+.star.half-filled::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background-color: #FFD700;
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>');
+  mask-size: cover;
+}
+
+.review-count {
+  font-size: 14px;
+  color: #666;
+}
+
+.product-description {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #555;
+  margin: 0;
+}
+
+/* Cart Actions */
+.cart-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.quantity-selector {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.quantity-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  font-weight: bold;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border: none;
+}
+
+.quantity-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.quantity-value {
+  width: 40px;
+  text-align: center;
+  font-size: 16px;
+}
+
+.add-to-cart-btn {
+  flex: 1;
+  padding: 0 30px;
+  background-color: #704116;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.add-to-cart-btn:hover {
+  background-color: #5a3412;
+}
+
+/* Recommended Products Section */
+.recommended-products {
+  margin: 60px auto;
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.product-cards {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  padding: 10px 0;
+}
+
+.product-cards::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+.product-card {
+  min-width: 280px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.product-image {
+  position: relative;
+  height: 200px;
+  background-color: #f5f5f5;
+  overflow: hidden;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.product-tag.sale {
+  background-color: #e97171;
+}
+
+.product-tag.new {
+  background-color: #2ec1ac;
+}
+
+.product-tag.cruelty-free {
+  background-color: #e97171;
+}
+
+.product-tag.plastic-free {
+  background-color: #62acb1;
+}
+
+.product-tag.low-waste {
+  background-color: #2ec1ac;
+}
+
+.product-card-info {
+  padding: 15px;
+}
+
+.product-card-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.product-card-title {
+  font-size: 16px;
+  margin: 0 0 5px 0;
+  font-weight: 600;
+  transition: color 0.3s;
+}
+
+.product-card-link:hover .product-card-title {
+  color: #704116;
+}
+
+.product-card-category {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 10px 0;
+}
+
+.product-card-price {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.current-price {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.original-price {
+  font-size: 14px;
+  color: #999;
+  text-decoration: line-through;
+}
+
+/* Notification Popup */
+.notification-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  max-width: 450px;
+  width: 90%;
+  overflow: hidden;
+}
+
+.notification-popup.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.notification-content {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.notification-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #704116;
+  margin: 0;
+  padding: 15px 20px;
+  background-color: #f9f1e7;
+  border-bottom: 1px solid rgba(112, 65, 22, 0.1);
+  position: relative;
+}
+
+.notification-body {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+}
+
+.notification-icon-container {
+  width: 60px;
+  height: 60px;
+  background-color: rgba(46, 193, 172, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20px;
+}
+
+.notification-icon {
+  color: #2ec1ac;
+  width: 30px;
+  height: 30px;
+}
+
+.notification-message {
+  font-size: 16px;
+  color: #333;
+  margin: 0;
+  flex: 1;
+}
+
+.close-notification {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  color: #704116;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+}
+
+.view-cart-btn {
+  background-color: #704116;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  font-weight: 500;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 0 20px 20px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+  width: calc(100% - 40px);
+}
+
+.view-cart-btn:hover {
+  background-color: #5a3412;
+}
+
+/* Responsive Styles */
+@media (max-width: 992px) {
+  .product-detail {
+    grid-template-columns: 1fr;
   }
-  
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    color: #242424;
-    line-height: 1.6;
-    background-color: #faf3ea;
+}
+
+@media (max-width: 768px) {
+  .main-image {
+    height: 300px;
   }
-  
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 15px;
-  }
-  
-  a {
-    text-decoration: none;
-    color: inherit;
-  }
-  
-  ul {
-    list-style: none;
-  }
-  
-  button {
-    cursor: pointer;
-    border: none;
-    background: none;
-  }
-  
-  /* Header Styles */
-  .header {
-    padding: 15px 0;
-    border-bottom: 1px solid #eee;
-    background-color: #fff;
-  }
-  
-  .header-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  
-  .logo {
-    font-size: 24px;
-    font-weight: 700;
-    color: #704116;
-  }
-  
-  .main-nav ul {
-    display: flex;
-    gap: 20px;
-  }
-  
-  .main-nav a {
-    font-size: 14px;
-    font-weight: 500;
-    transition: color 0.3s;
-  }
-  
-  .main-nav a:hover, .main-nav a.active {
-    color: #704116;
-  }
-  
-  .header-icons {
-    display: flex;
-    gap: 15px;
-  }
-  
-  .icon-link {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-  }
-  
-  .icon {
-    width: 20px;
-    height: 20px;
-    background-color: #333;
-    mask-size: contain;
-    mask-repeat: no-repeat;
-    mask-position: center;
-  }
-  
-  .user-icon {
-    mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>');
-  }
-  
-  .search-icon {
-    mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
-  }
-  
-  .wishlist-icon {
-    mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>');
-  }
-  
-  .cart-icon {
-    mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>');
-  }
-  
-  /* Cart Icon and Mini Cart */
-  .cart-icon-wrapper {
-    position: relative;
-    cursor: pointer;
-  }
-  
-  .cart-count {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background-color: #e97171;
-    color: white;
-    font-size: 10px;
-    font-weight: bold;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .mini-cart {
-    position: absolute;
-    top: 30px;
-    right: -10px;
-    width: 300px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    padding: 15px;
-    z-index: 100;
-  }
-  
-  .mini-cart h4 {
-    margin-bottom: 10px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
-  }
-  
-  .mini-cart-items {
-    max-height: 300px;
-    overflow-y: auto;
-  }
-  
-  .mini-cart-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid #f5f5f5;
-  }
-  
-  .mini-cart-image {
-    width: 50px;
-    height: 50px;
-    object-fit: cover;
-    border-radius: 4px;
-  }
-  
-  .mini-cart-details {
-    flex: 1;
-  }
-  
-  .mini-cart-name {
-    font-size: 14px;
-    font-weight: 500;
-  }
-  
-  .mini-cart-price {
-    font-size: 12px;
-    color: #898989;
-  }
-  
-  .mini-cart-footer {
-    margin-top: 15px;
-    text-align: center;
-  }
-  
-  .view-cart-btn {
-    width: 100%;
-    padding: 8px;
-    background-color: #704116;
-    color: white;
-    border-radius: 4px;
-    font-weight: 500;
-  }
-  
-  /* Breadcrumb */
-  .breadcrumb-container {
-    background-color: #f9f1e7;
-    padding: 15px 0;
-  }
-  
-  .breadcrumb {
-    font-size: 14px;
-    color: #242424;
-  }
-  
-  .breadcrumb a {
-    color: #242424;
-    opacity: 0.8;
-  }
-  
-  /* Product Section */
-  .product-section {
-    padding: 40px 0;
-  }
-  
-  .product-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-  }
-  
-  /* Product Gallery */
-  .product-gallery {
-    display: flex;
-    gap: 20px;
-  }
-  
-  .gallery-thumbnails {
-    display: flex;
+}
+
+@media (max-width: 576px) {
+  .cart-actions {
     flex-direction: column;
-    gap: 10px;
-  }
-  
-  .thumbnail {
-    width: 80px;
-    height: 80px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    overflow: hidden;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.3s, border-color 0.3s;
-  }
-  
-  .thumbnail.active {
-    border-color: #704116;
-    opacity: 1;
-  }
-  
-  .thumbnail img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  .gallery-main {
-    flex: 1;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  
-  .gallery-main img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  /* Product Info */
-  .product-title {
-    font-size: 32px;
-    font-weight: 600;
-    margin-bottom: 10px;
-  }
-  
-  .product-price {
-    font-size: 24px;
-    font-weight: 600;
-    color: #704116;
-    margin-bottom: 15px;
-  }
-  
-  .product-rating {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-  
-  .stars {
-    display: flex;
-  }
-  
-  .star {
-    color: #d9d9d9;
-    font-size: 20px;
-  }
-  
-  .star.filled {
-    color: #ffc700;
-  }
-  
-  .review-count {
-    font-size: 14px;
-    color: #898989;
-  }
-  
-  .product-description {
-    font-size: 16px;
-    line-height: 1.6;
-    color: #3a3a3a;
-    margin-bottom: 30px;
-  }
-  
-  /* Product Options */
-  .product-options {
-    margin-bottom: 30px;
-  }
-  
-  .option-group {
-    margin-bottom: 20px;
-  }
-  
-  .option-group h3 {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 10px;
-  }
-  
-  .option-buttons {
-    display: flex;
-    gap: 15px;
-  }
-  
-  .option-button {
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    font-size: 14px;
-    transition: all 0.3s;
-  }
-  
-  .option-button.active {
-    background-color: #704116;
-    color: white;
-    border-color: #704116;
-  }
-  
-  .color-options {
-    display: flex;
-    gap: 15px;
-  }
-  
-  .color-button {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    transition: all 0.3s;
-  }
-  
-  .color-button.active {
-    border-color: #704116;
-    transform: scale(1.1);
-  }
-  
-  /* Add to Cart */
-  .add-to-cart {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-  }
-  
-  .quantity-selector {
-    display: flex;
-    align-items: center;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-  }
-  
-  .quantity-btn {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    background-color: #f4f5f7;
-  }
-  
-  .quantity {
-    width: 40px;
-    text-align: center;
-    font-size: 16px;
   }
   
   .add-to-cart-btn {
-    flex: 1;
-    padding: 0 30px;
-    height: 40px;
-    background-color: #704116;
-    color: white;
-    border-radius: 4px;
-    font-weight: 600;
-    transition: background-color 0.3s;
-  }
-  
-  .add-to-cart-btn:hover {
-    background-color: #5a3412;
-  }
-  
-  /* Added to Cart Notification */
-  .added-notification {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 15px;
-    background-color: #e6f7e6;
-    color: #2ec1ac;
-    border-radius: 4px;
-    font-weight: 500;
-    animation: fadeIn 0.3s ease-in-out;
-  }
-  
-  .check-icon {
-    font-size: 18px;
-    font-weight: bold;
-  }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  /* Recommended Products */
-  .recommended-section {
-    padding: 60px 0;
-    background-color: #f9f1e7;
-  }
-  
-  .section-title {
-    font-size: 28px;
-    font-weight: 600;
-    margin-bottom: 30px;
-    text-align: center;
-  }
-  
-  .recommended-products {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 30px;
-    margin-bottom: 40px;
-  }
-  
-  .product-card {
-    background-color: white;
-    border-radius: 8px;
-    overflow: hidden;
-    position: relative;
-    transition: transform 0.3s, box-shadow 0.3s;
-  }
-  
-  .product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* Product Badges */
-  .product-badges {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  
-  .product-badge {
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    color: white;
-  }
-  
-  .discount-badge {
-    background-color: #e97171;
-  }
-  
-  .sustainability-badge {
-    background-color: #2ec1ac;
-  }
-  
-  .sustainability-badge.low-waste {
-    background-color: #2ec1ac;
-  }
-  
-  .sustainability-badge.plastic-free {
-    background-color: #62acb1;
-  }
-  
-  .sustainability-badge.biodegradable {
-    background-color: #7cb342;
-  }
-  
-  .sustainability-badge.cruelty-free {
-    background-color: #e89f71;
-  }
-  
-  .product-image {
-    height: 200px;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .product-image img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s;
+    padding: 12px;
   }
-  
-  .product-card:hover .product-image img {
-    transform: scale(1.05);
-  }
-  
-  .product-details {
-    padding: 15px;
-  }
-  
-  .product-name {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 5px;
-  }
-  
-  .product-category {
-    font-size: 14px;
-    color: #898989;
-    margin-bottom: 10px;
-  }
-  
-  .product-price {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 15px;
-  }
-  
-  .current-price {
-    font-weight: 600;
-    font-size: 16px;
-  }
-  
-  .original-price {
-    font-size: 14px;
-    color: #b0b0b0;
-    text-decoration: line-through;
-  }
-  
-  /* Product Card Button */
-  .product-card-btn {
-    width: 100%;
-    height: 36px;
-    font-size: 14px;
-    margin-top: 10px;
-  }
-  
-  .show-more {
-    text-align: center;
-  }
-  
-  .show-more-btn {
-    padding: 10px 30px;
-    border: 1px solid #704116;
-    border-radius: 4px;
-    color: #704116;
-    font-weight: 600;
-    transition: all 0.3s;
-  }
-  
-  .show-more-btn:hover {
-    background-color: #704116;
-    color: white;
-  }
-  
-  /* Footer */
-  .footer {
-    background-color: #704116;
-    color: #fff;
-    padding: 50px 0 20px;
-  }
-  
-  .footer-content {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 30px;
-    margin-bottom: 30px;
-  }
-  
-  .footer-logo {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 15px;
-  }
-  
-  .footer-column h4 {
-    font-size: 18px;
-    margin-bottom: 20px;
-    font-weight: 600;
-  }
-  
-  .footer-column ul {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .footer-column a {
-    font-size: 14px;
-    opacity: 0.8;
-    transition: opacity 0.3s;
-  }
-  
-  .footer-column a:hover {
-    opacity: 1;
-  }
-  
-  .newsletter-form {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .newsletter-input {
-    padding: 10px;
-    border: none;
-    border-radius: 4px;
-  }
-  
-  .subscribe-btn {
-    padding: 10px;
-    background-color: #fff;
-    color: #704116;
-    border-radius: 4px;
-    font-weight: 600;
-    transition: background-color 0.3s;
-  }
-  
-  .subscribe-btn:hover {
-    background-color: #f0f0f0;
-  }
-  
-  .copyright {
-    text-align: center;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    font-size: 14px;
-    opacity: 0.8;
-  }
-  
-  /* Responsive Styles */
-  @media (max-width: 1024px) {
-    .product-layout {
-      grid-template-columns: 1fr;
-      gap: 30px;
-    }
-    
-    .recommended-products {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .footer-content {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-  
-  @media (max-width: 768px) {
-    .header-container {
-      flex-direction: column;
-      gap: 15px;
-    }
-    
-    .main-nav ul {
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    
-    .product-gallery {
-      flex-direction: column-reverse;
-    }
-    
-    .gallery-thumbnails {
-      flex-direction: row;
-      overflow-x: auto;
-    }
-    
-    .footer-content {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .recommended-products {
-      grid-template-columns: 1fr;
-    }
-    
-    .add-to-cart {
-      flex-direction: column;
-    }
-    
-    .add-to-cart-btn {
-      width: 100%;
-    }
-  }
-  </style>
+}
+</style>
