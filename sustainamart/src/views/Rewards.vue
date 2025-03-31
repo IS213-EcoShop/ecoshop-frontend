@@ -71,7 +71,7 @@
             
             <div class="leaderboard-list">
               <div 
-                v-for="(user, index) in leaderboard" 
+                v-for="(user, index) in sortedLeaderboard" 
                 :key="user.id"
                 class="leaderboard-item"
                 :class="{ 'current-user': user.isCurrentUser, 'top-three': index < 3 }"
@@ -205,7 +205,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { 
   User as UserIcon, 
   Search as SearchIcon, 
@@ -332,6 +332,11 @@ const leaderboard = reactive([
   { id: 9, username: '@brinda670988', points: 310, isCurrentUser: false }
 ])
 
+// Computed property for sorted leaderboard (descending order by points)
+const sortedLeaderboard = computed(() => {
+  return [...leaderboard].sort((a, b) => b.points - a.points)
+})
+
 // Vouchers data
 const vouchers = reactive([
   { id: 1, amount: '$5', title: '$5 Discount Voucher', points: 500 },
@@ -342,6 +347,67 @@ const vouchers = reactive([
 
 // User's redeemed vouchers
 const userVouchers = reactive([])
+
+// Function to save user points to localStorage
+const saveUserPoints = (points) => {
+  try {
+    localStorage.setItem('userPoints', points.toString());
+    console.log('Saved user points to localStorage:', points);
+  } catch (error) {
+    console.error('Error saving user points to localStorage:', error);
+  }
+}
+
+// Function to load user points from localStorage
+const loadUserPoints = () => {
+  try {
+    const storedPoints = localStorage.getItem('userPoints');
+    if (storedPoints !== null) {
+      userPoints.value = parseInt(storedPoints, 10);
+      console.log('Loaded user points from localStorage:', userPoints.value);
+      
+      // Update the current user in the leaderboard
+      const currentUser = leaderboard.find(user => user.isCurrentUser);
+      if (currentUser) {
+        currentUser.points = userPoints.value;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading user points from localStorage:', error);
+  }
+}
+
+// Function to save missions state to localStorage
+const saveMissionsState = () => {
+  try {
+    localStorage.setItem('userMissions', JSON.stringify(allMissions));
+    console.log('Saved missions state to localStorage');
+  } catch (error) {
+    console.error('Error saving missions state to localStorage:', error);
+  }
+}
+
+// Function to load missions state from localStorage
+const loadMissionsState = () => {
+  try {
+    const storedMissions = localStorage.getItem('userMissions');
+    if (storedMissions) {
+      const parsedMissions = JSON.parse(storedMissions);
+      
+      // Update each mission in allMissions with the stored state
+      parsedMissions.forEach((storedMission) => {
+        const missionIndex = allMissions.findIndex(m => m.id === storedMission.id);
+        if (missionIndex !== -1) {
+          Object.assign(allMissions[missionIndex], storedMission);
+        }
+      });
+      
+      console.log('Loaded missions state from localStorage');
+    }
+  } catch (error) {
+    console.error('Error loading missions state from localStorage:', error);
+  }
+}
 
 // Function to join a mission
 const joinMission = async (mission) => {
@@ -363,6 +429,9 @@ const joinMission = async (mission) => {
       missionToUpdate.isActive = true
       missionToUpdate.inProgress = true
       missionToUpdate.current = 0
+      
+      // Save missions state to localStorage
+      saveMissionsState();
       
       // Show popup
       popupData.title = 'Mission Joined'
@@ -412,13 +481,16 @@ const completeMission = async (mission) => {
       userPoints.value += missionToUpdate.points
       lastPointsAwarded.value = missionToUpdate.points
       
+      // Save user points to localStorage
+      saveUserPoints(userPoints.value);
+      
+      // Save missions state to localStorage
+      saveMissionsState();
+      
       // Update leaderboard
       const currentUser = leaderboard.find(user => user.isCurrentUser)
       if (currentUser) {
         currentUser.points += missionToUpdate.points
-        
-        // Sort leaderboard by points
-        leaderboard.sort((a, b) => b.points - a.points)
       }
       
       // Show points updated animation
@@ -479,13 +551,13 @@ const redeemVoucher = async (voucher) => {
     // Deduct points
     userPoints.value -= voucher.points
     
+    // Save updated points to localStorage
+    saveUserPoints(userPoints.value);
+    
     // Update leaderboard
     const currentUser = leaderboard.find(user => user.isCurrentUser)
     if (currentUser) {
       currentUser.points -= voucher.points
-      
-      // Sort leaderboard by points
-      leaderboard.sort((a, b) => b.points - a.points)
     }
     
     // Add voucher to user's vouchers
@@ -493,16 +565,22 @@ const redeemVoucher = async (voucher) => {
     expiryDate.setMonth(expiryDate.getMonth() + 3)
     const formattedExpiryDate = `${expiryDate.getDate()}/${expiryDate.getMonth() + 1}/${expiryDate.getFullYear()}`
     
-    userVouchers.push({
+    const newVoucher = {
       id: Date.now(), // Generate a unique ID
       amount: voucher.amount,
       title: voucher.title,
-      expiryDate: formattedExpiryDate
-    })
+      expiryDate: formattedExpiryDate,
+      code: generateVoucherCode() // Generate a unique voucher code
+    }
+    
+    userVouchers.push(newVoucher)
+    
+    // Save voucher to localStorage for cart page to access
+    saveVoucherToStorage(newVoucher)
     
     // Show success popup
     popupData.title = 'Voucher Redeemed'
-    popupData.message = `You've successfully redeemed a ${voucher.amount} voucher! It has been added to your vouchers.`
+    popupData.message = `You've successfully redeemed a ${voucher.amount} voucher! It has been added to your vouchers and is available in your cart.`
     popupData.success = true
     popupData.buttonText = 'OK'
     showPopup.value = true
@@ -518,10 +596,57 @@ const redeemVoucher = async (voucher) => {
   }
 }
 
+// Function to generate a random voucher code
+const generateVoucherCode = () => {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let code = ''
+  for (let i = 0; i < 8; i++) {
+    code += characters.charAt(Math.floor(Math.random() * characters.length))
+  }
+  return code
+}
+
+// Function to save voucher to localStorage
+const saveVoucherToStorage = (voucher) => {
+  try {
+    // Get existing vouchers from localStorage
+    const existingVouchers = JSON.parse(localStorage.getItem('userVouchers') || '[]')
+    
+    // Add new voucher
+    existingVouchers.push({
+      id: voucher.id,
+      amount: voucher.amount,
+      title: voucher.title,
+      expiryDate: voucher.expiryDate,
+      code: voucher.code,
+      value: parseInt(voucher.amount.replace('$', '')) // Extract numeric value
+    })
+    
+    // Save back to localStorage
+    localStorage.setItem('userVouchers', JSON.stringify(existingVouchers))
+  } catch (error) {
+    console.error('Error saving voucher to localStorage:', error)
+  }
+}
+
 // Function to use a voucher
 const useVoucher = (voucher) => {
-  // Simulate applying voucher to cart
-  // In a real app, you would make an API call or update the cart state
+  // Mark voucher as active in localStorage
+  try {
+    // Get existing vouchers from localStorage
+    const existingVouchers = JSON.parse(localStorage.getItem('userVouchers') || '[]')
+    
+    // Find the voucher and mark it as active
+    const voucherIndex = existingVouchers.findIndex(v => v.id === voucher.id)
+    if (voucherIndex !== -1) {
+      existingVouchers[voucherIndex].isActive = true
+      
+      // Save back to localStorage
+      localStorage.setItem('userVouchers', JSON.stringify(existingVouchers))
+    }
+  } catch (error) {
+    console.error('Error updating voucher in localStorage:', error)
+  }
   
   // Show voucher applied notification
   showVoucherApplied.value = true
@@ -533,13 +658,74 @@ const useVoucher = (voucher) => {
     if (index !== -1) {
       userVouchers.splice(index, 1)
     }
-  }, 3000)
+    
+    // Redirect to cart page
+    window.location.href = '/cart'
+  }, 2000)
 }
 
 // Function to close popup
 const closePopup = () => {
   showPopup.value = false
 }
+
+// Load vouchers from localStorage on component mount
+const loadVouchersFromStorage = () => {
+  try {
+    // Clear localStorage vouchers when starting the app
+    if (window.sessionStorage.getItem('appJustStarted') !== 'true') {
+      localStorage.removeItem('userVouchers');
+      window.sessionStorage.setItem('appJustStarted', 'true');
+    }
+    
+    const storedVouchers = JSON.parse(localStorage.getItem('userVouchers') || '[]')
+    
+    // Filter out vouchers that are already active
+    const inactiveVouchers = storedVouchers.filter(v => !v.isActive)
+    
+    // Update userVouchers with stored vouchers
+    inactiveVouchers.forEach(v => {
+      // Check if voucher already exists in userVouchers
+      const exists = userVouchers.some(uv => uv.id === v.id)
+      if (!exists) {
+        userVouchers.push({
+          id: v.id,
+          amount: v.amount,
+          title: v.title,
+          expiryDate: v.expiryDate,
+          code: v.code
+        })
+      }
+    })
+  } catch (error) {
+    console.error('Error loading vouchers from localStorage:', error)
+  }
+}
+
+// Initialize component
+onMounted(() => {
+  // Clear localStorage vouchers when starting the app
+  if (window.sessionStorage.getItem('appJustStarted') !== 'true') {
+    localStorage.removeItem('userVouchers');
+    localStorage.removeItem('userPoints');
+    localStorage.removeItem('userMissions');
+    window.sessionStorage.setItem('appJustStarted', 'true');
+  }
+  
+  // Load user points from localStorage
+  loadUserPoints();
+  
+  // Load missions state from localStorage
+  loadMissionsState();
+  
+  // Load vouchers from localStorage
+  loadVouchersFromStorage();
+});
+
+// Watch for changes to userPoints and save to localStorage
+watch(userPoints, (newPoints) => {
+  saveUserPoints(newPoints);
+});
 </script>
 
 <style>
