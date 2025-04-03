@@ -14,6 +14,7 @@
     <!-- Main Content -->
     <main class="main-content">
       <div class="container">
+        <!-- Cart Container -->
         <div class="cart-container">
           <h1 class="cart-title">Shopping Cart</h1>
           
@@ -81,36 +82,6 @@
               </div>
             </div>
 
-            <!-- Recommendations Section -->
-            <div v-if="recommendations.length > 0" class="recommendations-section">
-              <h3 class="recommendations-title">Recommended for You</h3>
-              <div class="recommendations-list">
-                <div v-for="product in recommendations" :key="product.productId" class="recommendation-item">
-                  <div class="recommendation-image">
-                    <img :src="product.imageUrl || '/placeholder.svg?height=120&width=120'" :alt="product.name">
-                    <span v-if="product.tagClass" class="product-tag" :class="product.tagClass">
-                      {{ product.category }}
-                    </span>
-                  </div>
-                  <div class="recommendation-details">
-                    <h4 class="recommendation-title">{{ product.name }}</h4>
-                    <p class="recommendation-description">{{ product.description }}</p>
-                    <p class="recommendation-price">${{ product.price.toFixed(2) }}</p>
-                    <button @click="addToCart(product)" class="add-to-cart-btn">
-                      <plus-icon size="16" />
-                      Add to Cart
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Loading recommendations -->
-            <div v-else-if="loadingRecommendations" class="loading-recommendations">
-              <div class="loading-spinner"></div>
-              <p>Loading recommendations...</p>
-            </div>
-
             <div class="cart-actions">
               <a href="/marketplace" class="continue-shopping-btn">
                 <arrow-left-icon size="16" />
@@ -122,6 +93,36 @@
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Recommendations Section - Now outside of cart items container -->
+        <div v-if="recommendations.length > 0" class="recommendations-container">
+          <h3 class="recommendations-title">Recommended for You</h3>
+          <div class="recommendations-list">
+            <div v-for="product in recommendations" :key="product.productId" class="recommendation-item">
+              <div class="recommendation-image">
+                <img :src="product.imageUrl || '/placeholder.svg?height=120&width=120'" :alt="product.name">
+                <span v-if="product.tagClass" class="product-tag" :class="product.tagClass">
+                  {{ product.category }}
+                </span>
+              </div>
+              <div class="recommendation-details">
+                <h4 class="recommendation-title">{{ product.name }}</h4>
+                <p class="recommendation-description">{{ product.description }}</p>
+                <p class="recommendation-price">${{ product.price.toFixed(2) }}</p>
+                <button @click="addToCart(product)" class="add-to-cart-btn">
+                  <plus-icon size="16" />
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Loading recommendations -->
+        <div v-else-if="loadingRecommendations" class="loading-recommendations">
+          <div class="loading-spinner"></div>
+          <p>Loading recommendations...</p>
         </div>
       </div>
     </main>
@@ -160,7 +161,8 @@ export default {
       stripePaymentUrl: null,
       paymentLinkAvailable: false,
       paymentCheckInterval: null,
-      orderId: null
+      orderId: null,
+      paymentId: null
     }
   },
   methods: {
@@ -413,9 +415,14 @@ export default {
           // Store the Stripe payment URL
           this.stripePaymentUrl = orderData.stripe_payment_url;
           
-          // Store order ID if available for checking payment status later
-          if (orderData.order_details && orderData.order_details.id) {
-            this.orderId = orderData.order_details.id;
+          // Store payment ID for checking payment status
+          if (orderData.payment_details && orderData.payment_details.paymentID) {
+            this.paymentId = orderData.payment_details.paymentID;
+          }
+          
+          // Store order ID if available
+          if (orderData.order_details) {
+            this.orderId = Object.keys(orderData.order_details)[0];
           }
           
           // Update status message
@@ -441,7 +448,7 @@ export default {
           }
           
           // Start checking payment status
-          this.startPaymentStatusCheck();
+          this.startPaymentStatusCheck(orderData);
           
         } else {
           throw new Error('Invalid response from server: Missing payment URL');
@@ -454,42 +461,51 @@ export default {
       }
     },
     
-    startPaymentStatusCheck() {
+    startPaymentStatusCheck(orderData) {
       // Clear any existing interval
       if (this.paymentCheckInterval) {
         clearInterval(this.paymentCheckInterval);
       }
+      
+      // Make sure we have the payment ID
+      if (!orderData.payment_details || !orderData.payment_details.paymentID) {
+        console.error("No payment ID available for status check");
+        this.handlePaymentFailure("Missing payment information");
+        return;
+      }
+      
+      const paymentId = orderData.payment_details.paymentID;
+      console.log("Starting payment status check for payment ID:", paymentId);
       
       this.paymentStatusMessage = 'Waiting for payment confirmation...';
       
       // Check payment status every 3 seconds
       this.paymentCheckInterval = setInterval(async () => {
         try {
-          if (!this.orderId) {
-            console.warn('No order ID available for payment status check');
-            return;
-          }
-          
-          const statusResponse = await fetch(`http://127.0.0.1:5301/check_payment_status/${this.orderId}`, {
+          // Use the correct endpoint and payment ID
+          const statusResponse = await fetch(`http://127.0.0.1:5202/payment/${paymentId}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
           });
           
           if (!statusResponse.ok) {
-            throw new Error('Failed to check payment status');
+            throw new Error(`Failed to check payment status: ${statusResponse.status}`);
           }
           
           const statusData = await statusResponse.json();
           console.log('Payment status check:', statusData);
           
-          if (statusData.status === 'completed' || statusData.status === 'succeeded') {
+          // Check payment_status field from the response
+          if (statusData.payment_status === 'successful' || statusData.payment_status === 'succeeded') {
             // Payment successful
             this.handlePaymentSuccess();
-          } else if (statusData.status === 'failed' || statusData.status === 'canceled') {
+          } else if (statusData.payment_status === 'failed' || statusData.payment_status === 'canceled') {
             // Payment failed
-            this.handlePaymentFailure(statusData.message || 'Payment was not completed');
+            this.handlePaymentFailure('Payment was not completed');
+          } else {
+            // Still pending, update the message
+            this.paymentStatusMessage = `Waiting for payment confirmation... (Status: ${statusData.payment_status || 'pending'})`;
           }
-          // For 'pending' status, continue checking
           
         } catch (error) {
           console.error('Error checking payment status:', error);
@@ -517,18 +533,14 @@ export default {
       this.stopPaymentStatusCheck();
       this.isProcessingPayment = false;
       
-      // Clear the cart
-      this.cartItems = [];
-      
       // Show success message
       this.toastMessage = "Payment successful! Your order has been placed.";
       this.showToast = true;
-      setTimeout(() => {
-        this.showToast = false;
-      }, 5000);
       
-      // Redirect to order confirmation page if needed
-      // window.location.href = '/order-confirmation';
+      // Reload the page to refresh the cart
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     },
     
     handlePaymentFailure(message) {
@@ -920,18 +932,21 @@ button {
 }
 
 /* Recommendations Section */
-.recommendations-section {
-  margin-top: 30px;
-  padding: 20px;
-  background-color: #f8ead7;
+.recommendations-container {
+  background-color: #fff;
   border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin-bottom: 40px;
+  padding: 20px;
 }
 
 .recommendations-title {
-  font-size: 18px;
+  font-size: 1.5rem;
   font-weight: 600;
   color: #704116;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
 }
 
 .recommendations-list {
