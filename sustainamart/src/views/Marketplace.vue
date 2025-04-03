@@ -71,14 +71,7 @@
             <div class="filter-section">
               <h3>Price Range</h3>
               <div class="price-slider">
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1000" 
-                  v-model="priceRange" 
-                  class="slider" 
-                  @input="updatePriceFilter"
-                >
+                <input type="range" min="0" max="1000" v-model="priceRange" class="slider" @input="updatePriceFilter">
                 <div class="price-range-values">
                   <span>Current: ${{ filters.maxPrice }}</span>
                 </div>
@@ -118,15 +111,16 @@
                     <span v-if="product.originalPrice" class="original-price">${{ product.originalPrice.toFixed(2)
                       }}</span>
                   </div>
-                  
+
                   <!-- Quantity Selector and Add to Cart -->
                   <div class="quantity-cart-container">
                     <div class="quantity-selector">
-                      <button @click="decrementQuantity(product.id)" class="quantity-btn">-</button>
-                      <span class="quantity-value">{{ productQuantities[product.id] || 1 }}</span>
-                      <button @click="incrementQuantity(product.id)" class="quantity-btn">+</button>
+                      <button @click="decrementQuantity(product.id)" class="quantity-btn" :disabled="productQuantities[product.id] === 1">-</button>
+                      <span class="quantity-value">{{ product.stock === 0 ? 0 : productQuantities[product.id] }}</span>
+                      <button @click="incrementQuantity(product.id)" class="quantity-btn" :disabled="productQuantities[product.id] >= product.stock || product.stock === 0">+</button>
                     </div>
-                    <button @click="addToCart(product)" class="add-to-cart-btn">Add to Cart</button>
+                    <button @click="addToCart(product)" class="add-to-cart-btn" :disabled="product.stock === 0">  {{ product.stock === 0 ? 'Out of Stock' : 'Add to Cart' }}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -156,7 +150,8 @@
     <!-- Cart Notification Popup -->
     <div class="notification-popup" v-if="showNotification" :class="{ 'show': showNotification }">
       <div class="notification-content">
-        <h3 class="notification-title">Item Added to Cart <button class="close-notification" @click="hideNotification">×</button></h3>
+        <h3 class="notification-title">Item Added to Cart <button class="close-notification"
+            @click="hideNotification">×</button></h3>
         <div class="notification-body">
           <div class="notification-icon-container">
             <check-circle-icon class="notification-icon" />
@@ -279,7 +274,9 @@ export default {
           image: product.ImageURL, // Or process with Supabase if needed
           category: product.Category,
           tag: product.TagClass ? product.TagClass.split('-').join(' ') : null,
-          tagClass: product.TagClass
+          tagClass: product.TagClass,
+          stock: product.Stock
+
         }));
 
         // Initialize quantities for all products
@@ -288,7 +285,7 @@ export default {
           quantities[product.id] = 1;
         });
         this.productQuantities = quantities;
-        
+
         // Set initial price range values
         this.filters.minPrice = 0;
         this.filters.maxPrice = 1000;
@@ -339,31 +336,43 @@ export default {
         productsSection.scrollIntoView({ behavior: 'smooth' });
       }
     },
-    
+
     applySort() {
       this.currentPage = 1;
     },
-    
+
     updatePriceFilter() {
       // Update the max price based on slider value
       this.filters.maxPrice = parseInt(this.priceRange);
       // Auto-apply filters when slider changes
       this.currentPage = 1;
     },
-    
+
     resetPagination() {
       this.currentPage = 1;
     },
-    
+
     // Increment quantity for a specific product
     incrementQuantity(productId) {
+
+      // Create a new object to ensure reactivity
+      const product = this.allProducts.find(p => p.id === productId);
+
+      if (!product) return;
+
+      const currentQuantity = this.productQuantities[productId] || 1;
+
+      // Don't increment if we've reached stock limit
+      if (currentQuantity >= product.stock) return;
+
       // Create a new object to ensure reactivity
       const newQuantities = { ...this.productQuantities };
-      newQuantities[productId] = (newQuantities[productId] || 1) + 1;
+      newQuantities[productId] = currentQuantity + 1;
       this.productQuantities = newQuantities;
       console.log(`Incremented product ${productId} to quantity ${this.productQuantities[productId]}`);
+
     },
-    
+
     // Decrement quantity for a specific product
     decrementQuantity(productId) {
       if ((this.productQuantities[productId] || 1) > 1) {
@@ -372,34 +381,35 @@ export default {
         newQuantities[productId] = newQuantities[productId] - 1;
         this.productQuantities = newQuantities;
         console.log(`Decremented product ${productId} to quantity ${this.productQuantities[productId]}`);
+
       }
     },
-    
+
     // Show notification
     showCartNotification(message) {
       this.notificationMessage = message;
       this.showNotification = true;
       // No auto-hide - notification stays until user closes it
     },
-    
+
     // Hide notification
     hideNotification() {
       this.showNotification = false;
     },
-    
+
     // Navigate to cart page
     navigateToCart() {
       // Hide the notification
       this.hideNotification();
-      
+
       // Navigate to Cart.vue
       window.location.href = '/cart';
     },
-    
+
     // Add to cart with quantity
     addToCart(product) {
       const quantity = this.productQuantities[product.id] || 1;
-      
+
       // Check if product is already in cart
       const existingProductIndex = this.cart.findIndex(item => item.id === product.id);
 
@@ -420,20 +430,20 @@ export default {
 
       // Save cart to localStorage
       this.saveCartToStorage();
-      
+
       // Update cart item count
       this.updateCartItemCount();
 
       // Show notification popup
       const message = `${quantity} ${product.name}${quantity > 1 ? 's' : ''} ${quantity > 1 ? 'have' : 'has'} been added to your cart successfully!`;
       this.showCartNotification(message);
-      
+
       console.log('Cart updated:', this.cart);
-      
+
       // Also try to update the server-side cart
       this.updateServerCart(product.id, quantity);
     },
-    
+
     // Update server-side cart
     async updateServerCart(productId, quantity) {
       try {
@@ -447,7 +457,7 @@ export default {
             Quantity: quantity
           })
         });
-        
+
         if (!response.ok) {
           console.warn('Failed to update server cart, but local cart was updated');
         }
@@ -455,7 +465,7 @@ export default {
         console.error('Error updating server cart:', error);
       }
     },
-    
+
     viewProductDetails(productId) {
       // Navigate to product detail page
       window.location.href = `/product/${productId}`;
@@ -465,10 +475,10 @@ export default {
 </script>
 
 <script setup>
-import { 
-  User as UserIcon, 
-  Search as SearchIcon, 
-  Heart as HeartIcon, 
+import {
+  User as UserIcon,
+  Search as SearchIcon,
+  Heart as HeartIcon,
   ShoppingCart as ShoppingCartIcon,
   ChevronRight as ChevronRightIcon,
   Trophy as TrophyIcon,
@@ -568,7 +578,8 @@ button {
   justify-content: center;
   text-align: center;
   z-index: 10;
-  position: relative; /* Ensures content stays above the blur overlay */
+  position: relative;
+  /* Ensures content stays above the blur overlay */
 }
 
 .hero-title {
@@ -576,7 +587,8 @@ button {
   font-weight: bold;
   color: #704116;
   margin-bottom: 0.5rem;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); /* Optional: adds slight shadow to make text more readable */
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+  /* Optional: adds slight shadow to make text more readable */
 }
 
 .breadcrumb {
@@ -606,16 +618,19 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  background-color: #ffffff; /* Changed from #f9f1e7 to white */
+  background-color: #ffffff;
+  /* Changed from #f9f1e7 to white */
   border-radius: 8px 8px 0 0;
   margin-top: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Added subtle shadow for consistency with sidebar */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  /* Added subtle shadow for consistency with sidebar */
 }
 
 .results-info {
   font-size: 14px;
   color: #666;
-  background-color: #f9f1e7; /* Keep this beige for the results info box */
+  background-color: #f9f1e7;
+  /* Keep this beige for the results info box */
   padding: 8px 15px;
   border-radius: 4px;
 }
@@ -631,7 +646,8 @@ button {
   padding: 6px 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  background-color: #f9f1e7; /* Changed from #fff to beige */
+  background-color: #f9f1e7;
+  /* Changed from #fff to beige */
   color: #333;
 }
 
@@ -645,7 +661,8 @@ button {
 
 /* Sidebar - Changed to white background */
 .sidebar {
-  background-color: #ffffff; /* White background */
+  background-color: #ffffff;
+  /* White background */
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -653,15 +670,18 @@ button {
 
 /* Update the filter sections to beige and remove gap between them */
 .filter-section {
-  margin-bottom: 0; /* Remove bottom margin to eliminate gap */
-  background-color: #f9f1e7; /* Beige color */
+  margin-bottom: 0;
+  /* Remove bottom margin to eliminate gap */
+  background-color: #f9f1e7;
+  /* Beige color */
   padding: 15px;
   border-radius: 6px;
 }
 
 /* Add margin only to the first filter section */
 .filter-section:first-child {
-  margin-bottom: 1px; /* Just a tiny gap to visually separate them */
+  margin-bottom: 1px;
+  /* Just a tiny gap to visually separate them */
 }
 
 /* Update text color in sidebar for better contrast */
@@ -669,7 +689,8 @@ button {
   font-size: 16px;
   margin-bottom: 15px;
   font-weight: 600;
-  color: #333; /* Darker text for better contrast on beige */
+  color: #333;
+  /* Darker text for better contrast on beige */
 }
 
 .filter-options {
@@ -684,7 +705,8 @@ button {
   gap: 8px;
   font-size: 14px;
   cursor: pointer;
-  color: #333; /* Darker text for better contrast on beige */
+  color: #333;
+  /* Darker text for better contrast on beige */
 }
 
 .price-slider {
@@ -725,14 +747,16 @@ button {
   justify-content: space-between;
   font-size: 14px;
   margin-top: 10px;
-  color: #333; /* Darker text for better contrast on beige */
+  color: #333;
+  /* Darker text for better contrast on beige */
 }
 
 .price-range-values {
   text-align: center;
   font-size: 14px;
   font-weight: 500;
-  color: #333; /* Darker text for better contrast on beige */
+  color: #333;
+  /* Darker text for better contrast on beige */
   margin-bottom: 5px;
 }
 
@@ -802,7 +826,8 @@ button {
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.2s;
-  z-index: 10; /* Ensure buttons are above product link */
+  z-index: 10;
+  /* Ensure buttons are above product link */
 }
 
 .quantity-btn:hover {
@@ -824,7 +849,8 @@ button {
   font-weight: 500;
   font-size: 14px;
   transition: background-color 0.3s;
-  z-index: 10; /* Ensure button is above product link */
+  z-index: 10;
+  /* Ensure button is above product link */
 }
 
 .add-to-cart-btn:hover {
@@ -1035,12 +1061,12 @@ button {
   .notification-popup {
     width: 95%;
   }
-  
+
   .notification-body {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .notification-icon-container {
     margin-right: 0;
     margin-bottom: 15px;
