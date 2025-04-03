@@ -25,8 +25,8 @@
           
           <!-- Error state -->
           <div v-else-if="error" class="error-message">
-            <p>{{ error }}</p>
-            <button @click="fetchCartItems" class="retry-button">Try Again</button>
+            <div v-html="error"></div>
+            <button v-if="!paymentLinkAvailable" @click="fetchCartItems" class="retry-button">Try Again</button>
           </div>
           
           <!-- Empty cart state -->
@@ -116,9 +116,9 @@
                 <arrow-left-icon size="16" />
                 Continue Shopping
               </a>
-              <button @click="checkout" class="checkout-btn">
+              <button @click="checkout" class="checkout-btn" :disabled="isProcessingPayment">
                 <credit-card-icon size="16" />
-                Proceed to Checkout
+                {{ isProcessingPayment ? 'Processing...' : 'Proceed to Checkout' }}
               </button>
             </div>
           </div>
@@ -127,8 +127,9 @@
     </main>
 
     <!-- Loading Overlay -->
-    <div v-if="isLoading" class="loading-overlay">
+    <div v-if="isLoading || isProcessingPayment" class="loading-overlay">
       <div class="loading-spinner"></div>
+      <p v-if="isProcessingPayment" class="payment-status-message">{{ paymentStatusMessage }}</p>
     </div>
 
     <!-- Toast Notification -->
@@ -153,7 +154,13 @@ export default {
       error: null,
       showToast: false,
       toastMessage: '',
-      userId: 200 // Using the userId from your example query
+      userId: 200, // Using the userId from your example query
+      isProcessingPayment: false,
+      paymentStatusMessage: 'Preparing your payment...',
+      stripePaymentUrl: null,
+      paymentLinkAvailable: false,
+      paymentCheckInterval: null,
+      orderId: null
     }
   },
   methods: {
@@ -378,19 +385,15 @@ export default {
     },
     
     async checkout() {
-      this.isLoading = true;
+      if (this.isProcessingPayment) return;
+      
+      this.isProcessingPayment = true;
+      this.paymentStatusMessage = 'Preparing your payment...';
+      this.error = null;
       
       try {
         console.log("🔄 Initiating checkout...");
         
-        // Prepare checkout data
-        const checkoutData = {
-          cartItems: this.cartItems.map(item => ({
-            ProductId: item.productId,
-            Quantity: item.quantity
-          }))
-        };
-
         // Place order via microservice
         const placeOrderResponse = await fetch('http://127.0.0.1:5301/place_order', {
           method: 'POST',
@@ -402,31 +405,155 @@ export default {
           throw new Error('Order placement failed');
         }
 
-        console.log("✅ Order placed successfully!");
+        // Parse the response to get the Stripe payment URL
+        const orderData = await placeOrderResponse.json();
+        console.log("✅ Order response received:", orderData);
         
-        // Clear the cart
-        this.cartItems = [];
-        
-        // Show success message
-        this.toastMessage = "Order placed successfully!";
-        this.showToast = true;
-        setTimeout(() => {
-          this.showToast = false;
-        }, 3000);
+        if (orderData.code === 201 && orderData.stripe_payment_url) {
+          // Store the Stripe payment URL
+          this.stripePaymentUrl = orderData.stripe_payment_url;
+          
+          // Store order ID if available for checking payment status later
+          if (orderData.order_details && orderData.order_details.id) {
+            this.orderId = orderData.order_details.id;
+          }
+          
+          // Update status message
+          this.paymentStatusMessage = 'Redirecting to payment page...';
+          
+          // Open the Stripe payment URL in a new window
+          const paymentWindow = window.open(this.stripePaymentUrl, '_blank');
+          
+          if (!paymentWindow) {
+            // If popup is blocked, provide a link for the user to click
+            this.paymentLinkAvailable = true;
+            this.paymentStatusMessage = 'Payment window was blocked.';
+            this.error = `
+              <div class="payment-link-container">
+                <p>Payment popup was blocked by your browser.</p>
+                <a href="${this.stripePaymentUrl}" target="_blank" class="payment-link">
+                  Click here to proceed to payment
+                </a>
+              </div>
+            `;
+            this.isProcessingPayment = false;
+            return;
+          }
+          
+          // Start checking payment status
+          this.startPaymentStatusCheck();
+          
+        } else {
+          throw new Error('Invalid response from server: Missing payment URL');
+        }
         
       } catch (error) {
         console.error('Error during checkout:', error);
-        this.error = error.message;
-        alert('There was an error processing your checkout. Please try again.');
-      } finally {
-        this.isLoading = false;
+        this.error = `Checkout error: ${error.message}`;
+        this.isProcessingPayment = false;
       }
+    },
+    
+    startPaymentStatusCheck() {
+      // Clear any existing interval
+      if (this.paymentCheckInterval) {
+        clearInterval(this.paymentCheckInterval);
+      }
+      
+      this.paymentStatusMessage = 'Waiting for payment confirmation...';
+      
+      // Check payment status every 3 seconds
+      this.paymentCheckInterval = setInterval(async () => {
+        try {
+          if (!this.orderId) {
+            console.warn('No order ID available for payment status check');
+            return;
+          }
+          
+          const statusResponse = await fetch(`http://127.0.0.1:5301/check_payment_status/${this.orderId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (!statusResponse.ok) {
+            throw new Error('Failed to check payment status');
+          }
+          
+          const statusData = await statusResponse.json();
+          console.log('Payment status check:', statusData);
+          
+          if (statusData.status === 'completed' || statusData.status === 'succeeded') {
+            // Payment successful
+            this.handlePaymentSuccess();
+          } else if (statusData.status === 'failed' || statusData.status === 'canceled') {
+            // Payment failed
+            this.handlePaymentFailure(statusData.message || 'Payment was not completed');
+          }
+          // For 'pending' status, continue checking
+          
+        } catch (error) {
+          console.error('Error checking payment status:', error);
+          // Don't stop checking on error, just log it
+        }
+      }, 3000);
+      
+      // Set a timeout to stop checking after 10 minutes (600000 ms)
+      setTimeout(() => {
+        this.stopPaymentStatusCheck();
+        if (this.isProcessingPayment) {
+          this.handlePaymentFailure('Payment confirmation timed out. Please check your order status in your account.');
+        }
+      }, 600000);
+    },
+    
+    stopPaymentStatusCheck() {
+      if (this.paymentCheckInterval) {
+        clearInterval(this.paymentCheckInterval);
+        this.paymentCheckInterval = null;
+      }
+    },
+    
+    handlePaymentSuccess() {
+      this.stopPaymentStatusCheck();
+      this.isProcessingPayment = false;
+      
+      // Clear the cart
+      this.cartItems = [];
+      
+      // Show success message
+      this.toastMessage = "Payment successful! Your order has been placed.";
+      this.showToast = true;
+      setTimeout(() => {
+        this.showToast = false;
+      }, 5000);
+      
+      // Redirect to order confirmation page if needed
+      // window.location.href = '/order-confirmation';
+    },
+    
+    handlePaymentFailure(message) {
+      this.stopPaymentStatusCheck();
+      this.isProcessingPayment = false;
+      
+      // Show error message
+      this.error = `Payment failed: ${message}`;
+      
+      // Show toast notification
+      this.toastMessage = "Payment was not completed. Please try again.";
+      this.showToast = true;
+      setTimeout(() => {
+        this.showToast = false;
+      }, 5000);
     }
   },
   mounted() {
     // Fetch cart items and recommendations when the component is mounted
     this.fetchCartItems();
     this.fetchRecommendations();
+  },
+  beforeUnmount() {
+    // Clean up interval when component is destroyed
+    this.stopPaymentStatusCheck();
   }
 }
 </script>
@@ -924,6 +1051,11 @@ button {
   background-color: #5a3412;
 }
 
+.checkout-btn:disabled {
+  background-color: #a67c52;
+  cursor: not-allowed;
+}
+
 /* Loading Overlay */
 .loading-overlay {
   position: fixed;
@@ -933,9 +1065,40 @@ button {
   height: 100%;
   background-color: rgba(255, 255, 255, 0.8);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+}
+
+.payment-status-message {
+  margin-top: 20px;
+  font-size: 18px;
+  color: #704116;
+  text-align: center;
+  max-width: 80%;
+}
+
+/* Payment Link */
+.payment-link-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.payment-link {
+  display: inline-block;
+  margin-top: 15px;
+  padding: 12px 24px;
+  background-color: #704116;
+  color: white !important;
+  border-radius: 4px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.payment-link:hover {
+  background-color: #5a3412;
 }
 
 /* Toast Notification */
