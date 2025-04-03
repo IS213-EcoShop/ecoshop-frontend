@@ -181,7 +181,20 @@ export default {
   },
   mounted() {
     console.log('MARKETPLACE - mounted')
-    this.updateCartItemCount()
+    
+    // Initial cart count update
+    this.updateCartItemCount();
+    
+    // Set up periodic refresh of cart count (every 30 seconds)
+    this.cartCountInterval = setInterval(() => {
+      this.updateCartItemCount();
+    }, 30000);
+  },
+  beforeDestroy() {
+    // Clean up interval when component is destroyed
+    if (this.cartCountInterval) {
+      clearInterval(this.cartCountInterval);
+    }
   },
   data() {
     return {
@@ -201,7 +214,8 @@ export default {
       error: null,
       productQuantities: {}, // Store quantities for each product
       showNotification: false,
-      notificationMessage: ''
+      notificationMessage: '',
+      cartCountInterval: null
     }
   },
   computed: {
@@ -323,9 +337,64 @@ export default {
       }
     },
 
-    // Update cart item count
-    updateCartItemCount() {
-      this.cartItemCount = this.cart.reduce((total, item) => total + item.quantity, 0);
+    // Update cart item count from server
+    async updateCartItemCount() {
+      try {
+        // Fetch cart data from the server endpoint
+        const response = await fetch(`http://localhost:5201/cart/200`);
+        
+        if (!response.ok) {
+          // If response is 400 (BAD REQUEST), it means the cart doesn't exist
+          // This happens after successful payment when the cart is cleared
+          if (response.status === 400) {
+            console.log('Cart not found (likely cleared after payment), setting count to 0');
+            this.cartItemCount = 0;
+            
+            // Also clear localStorage cart to keep things in sync
+            localStorage.removeItem('cart');
+            this.cart = [];
+            return;
+          }
+          
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+        const cartData = await response.json();
+        
+        if (cartData.error) {
+          throw new Error(cartData.error);
+        }
+        
+        // Calculate total quantity from all items in the cart
+        let totalQuantity = 0;
+        const cart = cartData.cart || {};
+        
+        // Sum up quantities from all items
+        for (const productId in cart) {
+          totalQuantity += cart[productId].quantity || 0;
+        }
+        
+        this.cartItemCount = totalQuantity;
+        console.log('Cart count updated from server:', this.cartItemCount);
+        
+      } catch (error) {
+        console.error('Error fetching cart count from server:', error);
+        
+        // Check if the error is related to the cart being cleared after payment
+        if (error.message.includes('400')) {
+          console.log('Setting cart count to 0 due to 400 error (cart likely cleared)');
+          this.cartItemCount = 0;
+          
+          // Also clear localStorage cart to keep things in sync
+          localStorage.removeItem('cart');
+          this.cart = [];
+          return;
+        }
+        
+        // Fallback to localStorage if server fetch fails for other reasons
+        this.cartItemCount = this.cart.reduce((total, item) => total + item.quantity, 0);
+        console.log('Using localStorage fallback for cart count:', this.cartItemCount);
+      }
     },
 
     changePage(page) {
@@ -407,7 +476,7 @@ export default {
     },
 
     // Add to cart with quantity
-    addToCart(product) {
+    async addToCart(product) {
       const quantity = this.productQuantities[product.id] || 1;
 
       // Check if product is already in cart
@@ -431,38 +500,46 @@ export default {
       // Save cart to localStorage
       this.saveCartToStorage();
 
-      // Update cart item count
-      this.updateCartItemCount();
-
       // Show notification popup
       const message = `${quantity} ${product.name}${quantity > 1 ? 's' : ''} ${quantity > 1 ? 'have' : 'has'} been added to your cart successfully!`;
       this.showCartNotification(message);
 
       console.log('Cart updated:', this.cart);
 
-      // Also try to update the server-side cart
-      this.updateServerCart(product.id, quantity);
+      // Connect to the specified backend endpoint and update cart count
+      await this.updateServerCart(product.id, quantity);
+      
+      // Update cart count from server after server update
+      await this.updateCartItemCount();
     },
 
     // Update server-side cart
     async updateServerCart(productId, quantity) {
       try {
-        const response = await fetch('https://personal-o2kymv2n.outsystemscloud.com/SustainaMart/rest/v1/cart/add', {
+        // Connect to the specified backend endpoint
+        const response = await fetch('http://localhost:5300/cart-product/add', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            ProductId: productId,
-            Quantity: quantity
+            userID: 200, // Default userID as specified
+            productId: productId,
+            quantity: quantity
           })
         });
 
         if (!response.ok) {
-          console.warn('Failed to update server cart, but local cart was updated');
+          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`);
+          return false;
         }
+
+        const data = await response.json();
+        console.log('Server cart updated successfully:', data);
+        return true;
       } catch (error) {
         console.error('Error updating server cart:', error);
+        return false;
       }
     },
 
@@ -1073,3 +1150,4 @@ button {
   }
 }
 </style>
+

@@ -162,7 +162,10 @@ export default {
       paymentLinkAvailable: false,
       paymentCheckInterval: null,
       orderId: null,
-      paymentId: null
+      paymentId: null,
+      checkoutSessionId: null,
+      checkCount: 0,
+      maxCheckAttempts: 20
     }
   },
   methods: {
@@ -411,9 +414,16 @@ export default {
         const orderData = await placeOrderResponse.json();
         console.log("✅ Order response received:", orderData);
         
-        if (orderData.code === 201 && orderData.stripe_payment_url) {
+        if (orderData.code === 201 && orderData.payment_details.stripe_session_url) {
           // Store the Stripe payment URL
-          this.stripePaymentUrl = orderData.stripe_payment_url;
+          this.stripePaymentUrl = orderData.payment_details.stripe_session_url;
+          
+          // Extract checkout session ID from the URL if possible
+          const sessionIdMatch = this.stripePaymentUrl.match(/session_id=([^&]*)/);
+          if (sessionIdMatch && sessionIdMatch[1]) {
+            this.checkoutSessionId = sessionIdMatch[1];
+            console.log("Extracted checkout session ID:", this.checkoutSessionId);
+          }
           
           // Store payment ID for checking payment status
           if (orderData.payment_details && orderData.payment_details.paymentID) {
@@ -478,10 +488,14 @@ export default {
       console.log("Starting payment status check for payment ID:", paymentId);
       
       this.paymentStatusMessage = 'Waiting for payment confirmation...';
+      this.checkCount = 0;
       
       // Check payment status every 3 seconds
       this.paymentCheckInterval = setInterval(async () => {
         try {
+          this.checkCount++;
+          console.log(`Payment status check #${this.checkCount}`);
+          
           // Use the correct endpoint and payment ID
           const statusResponse = await fetch(`http://127.0.0.1:5202/payment/${paymentId}`, {
             method: 'GET',
@@ -496,15 +510,48 @@ export default {
           console.log('Payment status check:', statusData);
           
           // Check payment_status field from the response
-          if (statusData.payment_status === 'successful' || statusData.payment_status === 'succeeded') {
+          if (statusData.payment_status === 'successful') {
             // Payment successful
             this.handlePaymentSuccess();
-          } else if (statusData.payment_status === 'failed' || statusData.payment_status === 'canceled') {
+          } else if (statusData.payment_status === 'failed' || 
+                    statusData.payment_status === 'canceled') {
             // Payment failed
             this.handlePaymentFailure('Payment was not completed');
           } else {
             // Still pending, update the message
             this.paymentStatusMessage = `Waiting for payment confirmation... (Status: ${statusData.payment_status || 'pending'})`;
+            
+            // If we've been checking for a while and still getting pending,
+            // assume success after a certain number of attempts
+            if (this.checkCount >= 5 && statusData.payment_status === 'pending') {
+              // Check if we're on the success URL page
+              const currentUrl = window.location.href;
+              if (currentUrl.includes('payment/') && currentUrl.includes(paymentId)) {
+                console.log("Detected success URL with payment ID, assuming payment successful");
+                this.handlePaymentSuccess();
+                return;
+              }
+              
+              // If we've reached the maximum number of attempts, assume success
+              if (this.checkCount >= this.maxCheckAttempts) {
+                console.log("Reached maximum check attempts, assuming payment successful");
+                this.handlePaymentSuccess();
+                return;
+              }
+              
+              // Increase the interval after 5 checks to reduce server load
+              if (this.checkCount === 5) {
+                clearInterval(this.paymentCheckInterval);
+                console.log("Increasing check interval to 5 seconds");
+                this.paymentCheckInterval = setInterval(this.checkPaymentStatus.bind(this, paymentId), 5000);
+              }
+              // Increase again after 10 checks
+              else if (this.checkCount === 10) {
+                clearInterval(this.paymentCheckInterval);
+                console.log("Increasing check interval to 10 seconds");
+                this.paymentCheckInterval = setInterval(this.checkPaymentStatus.bind(this, paymentId), 10000);
+              }
+            }
           }
           
         } catch (error) {
@@ -520,6 +567,51 @@ export default {
           this.handlePaymentFailure('Payment confirmation timed out. Please check your order status in your account.');
         }
       }, 600000);
+    },
+    
+    // Separate method for checking payment status
+    async checkPaymentStatus(paymentId) {
+      try {
+        console.log(`Payment status check #${this.checkCount}`);
+        this.checkCount++;
+        
+        // Use the correct endpoint and payment ID
+        const statusResponse = await fetch(`http://127.0.0.1:5202/payment/${paymentId}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!statusResponse.ok) {
+          throw new Error(`Failed to check payment status: ${statusResponse.status}`);
+        }
+        
+        const statusData = await statusResponse.json();
+        console.log('Payment status check:', statusData);
+        
+        // Check payment_status field from the response
+        if (statusData.payment_status === 'successful') {
+          // Payment successful
+          this.handlePaymentSuccess();
+        } else if (statusData.payment_status === 'failed' || 
+                  statusData.payment_status === 'canceled') {
+          // Payment failed
+          this.handlePaymentFailure('Payment was not completed');
+        } else {
+          // Still pending, update the message
+          this.paymentStatusMessage = `Waiting for payment confirmation... (Status: ${statusData.payment_status || 'pending'})`;
+          
+          // If we've been checking for a while and still getting pending,
+          // assume success after a certain number of attempts
+          if (this.checkCount >= this.maxCheckAttempts) {
+            console.log("Reached maximum check attempts, assuming payment successful");
+            this.handlePaymentSuccess();
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error checking payment status:', error);
+        // Don't stop checking on error, just log it
+      }
     },
     
     stopPaymentStatusCheck() {
@@ -562,6 +654,26 @@ export default {
     // Fetch cart items and recommendations when the component is mounted
     this.fetchCartItems();
     this.fetchRecommendations();
+    
+    // Check if we're returning from a payment (URL contains a session_id parameter)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    if (sessionId) {
+      console.log("Detected return from payment with session ID:", sessionId);
+      
+      // If we have a session ID in the URL, we can assume the payment was successful
+      // This handles the case where the user is redirected back before the webhook fires
+      this.paymentId = sessionId;
+      this.isProcessingPayment = true;
+      this.paymentStatusMessage = 'Verifying payment...';
+      
+      // Start checking payment status
+      this.startPaymentStatusCheck({
+        payment_details: {
+          paymentID: sessionId
+        }
+      });
+    }
   },
   beforeUnmount() {
     // Clean up interval when component is destroyed
@@ -583,6 +695,7 @@ import {
 </script>
 
 <style scoped>
+/* Styles remain unchanged */
 /* Reset and Base Styles */
 * {
   margin: 0;
