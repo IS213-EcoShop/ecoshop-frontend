@@ -101,10 +101,9 @@
                   </span>
                 </div>
                 <div class="product-info">
-                  <a :href="`/product/${product.id}`" class="product-title-link"
-                    @click.prevent="viewProductDetails(product.id)">
+                  <span class="product-title-link">
                     <h3 class="product-title">{{ product.name }}</h3>
-                  </a>
+                  </span>
                   <p class="product-description">{{ product.description }}</p>
                   <div class="product-price">
                     <span class="current-price">${{ product.price.toFixed(2) }}</span>
@@ -543,10 +542,6 @@ export default {
       }
     },
 
-    viewProductDetails(productId) {
-      // Navigate to product detail page
-      window.location.href = `/product/${productId}`;
-    }
   }
 }
 </script>
@@ -870,10 +865,12 @@ button {
   display: block;
   color: inherit;
   text-decoration: none;
+  cursor: default;
 }
 
 .product-title-link:hover .product-title {
-  color: #704116;
+  color: inherit;
+  text-decoration: none;
 }
 
 /* Quantity Selector and Add to Cart */
