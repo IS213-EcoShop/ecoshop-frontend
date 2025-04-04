@@ -306,48 +306,97 @@ export default {
       }
     },
     
-    increaseQuantity(index) {
+    async decreaseQuantity(index) {
       const item = this.cartItems[index];
-      this.updateCartItem(item.productId, item.quantity + 1);
-    },
-    
-    decreaseQuantity(index) {
-      const item = this.cartItems[index];
-      if (item.quantity > 1) {
-        this.updateCartItem(item.productId, item.quantity - 1);
+      if (item.quantity <= 1) {
+        return; // Don't decrement below 1
+      }
+      
+      try {
+        // First update the UI optimistically
+        this.cartItems[index].quantity -= 1;
+        
+        // Then connect to the specified backend endpoint
+        const response = await fetch('http://localhost:5300/cart-product/decrement', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userID: this.userId,
+            productId: item.productId
+          })
+        });
+
+        if (!response.ok) {
+          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`);
+          // Revert the optimistic update if the server request fails
+          this.cartItems[index].quantity += 1;
+          return false;
+        }
+
+        const data = await response.json();
+        console.log('Server cart updated successfully:', data);
+        return true;
+      } catch (error) {
+        console.error('Error updating cart:', error);
+        // Revert the optimistic update if the request fails
+        this.cartItems[index].quantity += 1;
+        return false;
       }
     },
     
     async removeItem(index) {
       const item = this.cartItems[index];
-      this.isLoading = true;
       
       try {
-        // Remove from local state
+        // Store the item in case we need to revert
+        const removedItem = { ...this.cartItems[index] };
+        
+        // Remove from local state optimistically
         this.cartItems.splice(index, 1);
         
-        // Here you would add the GraphQL mutation to remove the item from the cart on the server
-        // const mutation = `
-        //   mutation RemoveCartItem($userId: Int!, $productId: Int!) {
-        //     removeCartItem(userId: $userId, productId: $productId) {
-        //       success
-        //     }
-        //   }
-        // `;
+        // Connect to the specified backend endpoint
+        const response = await fetch('http://localhost:5300/cart-product/remove', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userID: this.userId,
+            productId: item.productId
+          })
+        });
+
+        if (!response.ok) {
+          console.warn(`Failed to remove item from server cart: ${response.status} ${response.statusText}`);
+          // Revert the optimistic update if the server request fails
+          this.cartItems.splice(index, 0, removedItem);
+          return false;
+        }
+
+        const data = await response.json();
+        console.log('Item removed from server cart successfully:', data);
         
+        // Show toast notification
+        this.toastMessage = `${item.name} removed from cart!`;
+        this.showToast = true;
+        setTimeout(() => {
+          this.showToast = false;
+        }, 3000);
+        
+        return true;
       } catch (error) {
-        console.error('Error removing item:', error);
-        this.error = error.message;
-      } finally {
-        this.isLoading = false;
+        console.error('Error removing item from cart:', error);
+        // Revert the optimistic update if the request fails
+        this.cartItems.splice(index, 0, item);
+        return false;
       }
     },
     
     async addToCart(product) {
-      this.isLoading = true;
-      
       try {
-        // Add to local state first
+        // First update the UI optimistically
         const existingItemIndex = this.cartItems.findIndex(item => item.productId === product.productId);
         
         if (existingItemIndex !== -1) {
@@ -361,14 +410,33 @@ export default {
           });
         }
         
-        // Here you would add the GraphQL mutation to add the item to the cart on the server
-        // const mutation = `
-        //   mutation AddToCart($userId: Int!, $productId: Int!, $quantity: Int!) {
-        //     addToCart(userId: $userId, productId: $productId, quantity: $quantity) {
-        //       success
-        //     }
-        //   }
-        // `;
+        // Then connect to the specified backend endpoint
+        const response = await fetch('http://localhost:5300/cart-product/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userID: this.userId,
+            productId: product.productId,
+            quantity: 1
+          })
+        });
+
+        if (!response.ok) {
+          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`);
+          
+          // Revert the optimistic update if the server request fails
+          if (existingItemIndex !== -1) {
+            this.cartItems[existingItemIndex].quantity -= 1;
+          } else {
+            this.cartItems = this.cartItems.filter(item => item.productId !== product.productId);
+          }
+          return false;
+        }
+
+        const data = await response.json();
+        console.log('Product added to server cart successfully:', data);
         
         // Show toast notification
         this.toastMessage = `${product.name} added to cart!`;
@@ -377,11 +445,22 @@ export default {
           this.showToast = false;
         }, 3000);
         
+        return true;
       } catch (error) {
         console.error('Error adding item to cart:', error);
-        this.error = error.message;
-      } finally {
-        this.isLoading = false;
+        
+        // Revert the optimistic update if the request fails
+        const existingItemIndex = this.cartItems.findIndex(item => item.productId === product.productId);
+        if (existingItemIndex !== -1) {
+          this.cartItems[existingItemIndex].quantity -= 1;
+          if (this.cartItems[existingItemIndex].quantity <= 0) {
+            this.cartItems = this.cartItems.filter(item => item.productId !== product.productId);
+          }
+        } else {
+          this.cartItems = this.cartItems.filter(item => item.productId !== product.productId);
+        }
+        
+        return false;
       }
     },
     
@@ -648,6 +727,44 @@ export default {
       setTimeout(() => {
         this.showToast = false;
       }, 5000);
+    },
+    
+    async increaseQuantity(index) {
+      const item = this.cartItems[index];
+      
+      try {
+        // First update the UI optimistically
+        this.cartItems[index].quantity += 1;
+        
+        // Then connect to the specified backend endpoint
+        const response = await fetch('http://localhost:5300/cart-product/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userID: this.userId, // Default userID as specified
+            productId: item.productId,
+            quantity: 1 // Just increment by 1 as backend handles the logic
+          })
+        });
+
+        if (!response.ok) {
+          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`);
+          // Revert the optimistic update if the server request fails
+          this.cartItems[index].quantity -= 1;
+          return false;
+        }
+
+        const data = await response.json();
+        console.log('Server cart updated successfully:', data);
+        return true;
+      } catch (error) {
+        console.error('Error updating cart:', error);
+        // Revert the optimistic update if the request fails
+        this.cartItems[index].quantity -= 1;
+        return false;
+      }
     }
   },
   mounted() {

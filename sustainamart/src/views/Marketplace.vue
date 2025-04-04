@@ -18,7 +18,6 @@
       <div class="container">
         <!-- Filter Bar -->
         <div class="filter-bar">
-          <!-- Removed the filter button as requested -->
           <div class="results-info">Showing {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage *
             itemsPerPage, filteredProducts.length) }} of {{ filteredProducts.length }} results</div>
           <div class="sort-options">
@@ -85,8 +84,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Removed the Apply Filters button as requested -->
           </aside>
 
           <!-- Products Section -->
@@ -289,7 +286,6 @@ export default {
           tag: product.TagClass ? product.TagClass.split('-').join(' ') : null,
           tagClass: product.TagClass,
           stock: product.Stock
-
         }));
 
         // Initialize quantities for all products
@@ -422,14 +418,10 @@ export default {
 
     // Increment quantity for a specific product
     incrementQuantity(productId) {
-
-      // Create a new object to ensure reactivity
       const product = this.allProducts.find(p => p.id === productId);
-
       if (!product) return;
 
       const currentQuantity = this.productQuantities[productId] || 1;
-
       // Don't increment if we've reached stock limit
       if (currentQuantity >= product.stock) return;
 
@@ -438,7 +430,6 @@ export default {
       newQuantities[productId] = currentQuantity + 1;
       this.productQuantities = newQuantities;
       console.log(`Incremented product ${productId} to quantity ${this.productQuantities[productId]}`);
-
     },
 
     // Decrement quantity for a specific product
@@ -449,7 +440,6 @@ export default {
         newQuantities[productId] = newQuantities[productId] - 1;
         this.productQuantities = newQuantities;
         console.log(`Decremented product ${productId} to quantity ${this.productQuantities[productId]}`);
-
       }
     },
 
@@ -469,7 +459,6 @@ export default {
     navigateToCart() {
       // Hide the notification
       this.hideNotification();
-
       // Navigate to Cart.vue
       window.location.href = '/cart';
     },
@@ -492,7 +481,6 @@ export default {
           ...product,
           quantity: quantity
         };
-
         this.cart.push(cartItem);
       }
 
@@ -505,53 +493,12 @@ export default {
 
       console.log('Cart updated:', this.cart);
 
-      // Connect to the specified backend endpoint and update cart count
+      // Connect to the specified backend endpoint
       await this.updateServerCart(product.id, quantity);
       
       // Update cart count from server after server update
       await this.updateCartItemCount();
     },
-    
-    async addToServerCart(product, quantity) {
-      try {
-        const userId = 200; // This can be dynamic depending on your user session
-
-        // Create the request payload
-        const requestBody = {
-          product: {
-            id: product.id,
-            name: product.name,
-            description: product.description,
-            price: product.price,
-            stock: product.stock,
-            image: product.image
-          },
-          quantity: quantity,
-          user_id: userId
-        };
-
-        // Send a POST request to your backend
-        const response = await fetch('http://127.0.0.1:5201/cart/add', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to add product to cart: ${response.statusText}`);
-        }
-
-        const responseData = await response.json();
-        console.log('Product added to server cart:', responseData);
-        return true;
-      } catch (error) {
-        console.error('Error adding product to server cart:', error);
-        return false;
-      }
-    },
-
 
     // Update server-side cart
     async updateServerCart(productId, quantity) {
@@ -581,8 +528,7 @@ export default {
         console.error('Error updating server cart:', error);
         return false;
       }
-    },
-
+    }
   }
 }
 </script>
@@ -1188,4 +1134,3 @@ button {
   }
 }
 </style>
-
