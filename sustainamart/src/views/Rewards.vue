@@ -42,12 +42,12 @@
             <div v-if="currentMissions.length > 0" class="missions-list">
               <div v-for="mission in currentMissions" :key="mission.id" class="mission-card">
                 <div class="mission-header">
-                  <span class="points-badge">+{{ mission.points }} points</span>
-                  <span class="mission-progress-text">{{ mission.current }} of {{ mission.total }}</span>
+                  <span class="points-badge">+{{ mission.reward_points }} points</span>
+                  <span class="mission-progress-text">{{ mission.current }} of {{ mission.goal }}</span>
                 </div>
-                <h4 class="mission-title">{{ mission.title }}</h4>
+                <h4 class="mission-title">{{ mission.name }}</h4>
                 <div class="progress-bar">
-                  <div class="progress-fill" :style="{ width: `${(mission.current / mission.total) * 100}%` }"></div>
+                  <div class="progress-fill" :style="{ width: `${(mission.current / mission.goal) * 100}%` }"></div>
                 </div>
                 <p class="mission-date">{{ mission.inProgress ? 'In progress' : `Completed before ${mission.completionDate}` }}</p>
                 <button 
@@ -69,8 +69,8 @@
             
             <div class="earn-points-grid">
               <div v-for="mission in availableMissions" :key="mission.id" class="earn-points-card">
-                <span class="points-badge">Get +{{ mission.points }} points</span>
-                <h4 class="earn-points-title">{{ mission.title }}</h4>
+                <span class="points-badge">Get +{{ mission.reward_points }} points</span>
+                <h4 class="earn-points-title">{{ mission.description }}</h4>
                 <button @click="joinMission(mission)" class="join-button">Join Mission</button>
               </div>
             </div>
@@ -390,10 +390,10 @@ const fetchAvailableMissions = async () => {
       data.forEach(mission => {
         allMissions.push({
           id: mission.id,
-          title: mission.title,
+          title: mission.name,
           description: mission.description || '',
-          points: mission.points || 100,
-          total: mission.steps || 1
+          points: mission.reward_points || 100,
+          total: mission.goal || 1
         })
       })
     }
@@ -442,7 +442,7 @@ const fetchAllData = async () => {
 const joinMission = async (mission) => {
   try {
     // Call the API to join the mission
-    const response = await fetch('http://localhost:5403/mission/update', {
+    const response = await fetch('http://localhost:5403/mission/join', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -462,7 +462,7 @@ const joinMission = async (mission) => {
     
     // Show popup
     popupData.title = 'Mission Joined'
-    popupData.message = `You've joined the "${mission.title}" mission. Complete it to earn ${mission.points} points!`
+    popupData.message = `You've joined the "${mission.name}" mission. Complete it to earn ${mission.reward_points} points!`
     popupData.success = true
     popupData.buttonText = 'Start Mission'
     showPopup.value = true
@@ -501,7 +501,7 @@ const completeMission = async (mission) => {
     const data = await response.json()
     
     // Update points awarded
-    lastPointsAwarded.value = mission.points
+    lastPointsAwarded.value = mission.reward_points
     
     // Refresh wallet data to get updated points
     await fetchWalletData()
@@ -526,7 +526,7 @@ const completeMission = async (mission) => {
     
     // Show success popup
     popupData.title = 'Mission Completed'
-    popupData.message = `Congratulations! You've completed the "${mission.title}" mission and earned ${mission.points} points!`
+    popupData.message = `Congratulations! You've completed the "${mission.name}" mission and earned ${mission.reward_points} points!`
     popupData.success = true
     popupData.buttonText = 'Claim Reward'
     showPopup.value = true
