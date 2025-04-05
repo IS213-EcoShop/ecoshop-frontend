@@ -14,7 +14,19 @@
     </div>
 
     <main class="main-content container">
-      <div class="two-column-grid">
+      <div v-if="isLoading" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Loading data...</p>
+      </div>
+      
+      <div v-else-if="error" class="error-container">
+        <alert-circle-icon size="48" class="error-icon" />
+        <h3>Error Loading Data</h3>
+        <p>{{ error }}</p>
+        <button @click="fetchAllData" class="retry-button">Retry</button>
+      </div>
+      
+      <div v-else class="two-column-grid">
         <div class="column">
           <div class="card">
             <h2 class="points-title">
@@ -80,7 +92,7 @@
                   {{ index + 1 }}
                 </div>
                 <div class="leaderboard-user">
-                  <div class="user-name">{{ user.username }} {{ user.isCurrentUser ? '(You)' : '' }}</div>
+                  <div class="user-name">{{ user.id }} {{ user.isCurrentUser ? '(You)' : '' }}</div>
                 </div>
                 <div class="user-score" :class="{ 'points-updated': user.isCurrentUser && pointsUpdated }">{{ user.points }}</div>
               </div>
@@ -91,7 +103,7 @@
             <h3 class="section-title">Redeem Points</h3>
             
             <div v-if="userPoints >= 500" class="redeem-points-grid">
-              <div v-for="voucher in vouchers" :key="voucher.id" class="redeem-card">
+              <div v-for="voucher in availableVouchers" :key="voucher.id" class="redeem-card">
                 <div class="voucher-amount">{{ voucher.amount }}</div>
                 <div class="redeem-content">
                   <h4 class="redeem-title">{{ voucher.title }}</h4>
@@ -171,7 +183,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { createClient } from '@supabase/supabase-js'
 import { 
   User as UserIcon, 
   Search as SearchIcon, 
@@ -189,6 +202,20 @@ import {
   CheckCircle as CheckCircleIcon,
   AlertCircle as AlertCircleIcon
 } from 'lucide-vue-next'
+
+// Replace the Supabase initialization section with:
+
+// Initialize Supabase client with provided credentials
+const supabaseUrl = 'https://cvtknyvnrxhaqdvdmlde.supabase.co'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2dGtueXZucnhoYXFkdmRtbGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5NDgyMzAsImV4cCI6MjA1NzUyNDIzMH0.cwPyRfbk5dwizQslRHTWzPGaRiiiDerVAMv_dwNDbUc'
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+// User ID - In a real app, this would come from authentication
+const userId = ref(200)
+
+// Loading and error states
+const isLoading = ref(false)
+const error = ref(null)
 
 // User points state
 const userPoints = ref(0)
@@ -209,94 +236,22 @@ const popupData = reactive({
 const showVoucherApplied = ref(false)
 
 // Missions data
-const allMissions = reactive([
-  { 
-    id: 1, 
-    title: 'Buy 1 sustainable product', 
-    points: 500, 
-    current: 0, 
-    total: 1, 
-    completionDate: '',
-    isActive: false,
-    isCompleted: false,
-    inProgress: false
-  },
-  { 
-    id: 2, 
-    title: 'Weekly loyalty streak', 
-    points: 200, 
-    current: 0, 
-    total: 2, 
-    completionDate: '',
-    isActive: false,
-    isCompleted: false,
-    inProgress: false
-  },
-  { 
-    id: 3, 
-    title: 'Refer 1 friend', 
-    points: 100, 
-    current: 0, 
-    total: 1, 
-    completionDate: '',
-    isActive: false,
-    isCompleted: false,
-    inProgress: false
-  },
-  { 
-    id: 4, 
-    title: 'Customer satisfaction survey', 
-    points: 200, 
-    current: 0, 
-    total: 2, 
-    completionDate: '',
-    isActive: false,
-    isCompleted: false,
-    inProgress: false
-  },
-  { 
-    id: 5, 
-    title: 'Social Media Engagement', 
-    points: 100, 
-    current: 0, 
-    total: 1, 
-    isActive: false,
-    isCompleted: false,
-    inProgress: false
-  },
-  { 
-    id: 6, 
-    title: 'Daily Streak Bonus', 
-    points: 100, 
-    current: 0, 
-    total: 1, 
-    isActive: false,
-    isCompleted: false,
-    inProgress: false
-  }
-])
+const allMissions = reactive([])
+const joinedMissions = ref([])
+
+// Leaderboard data
+const leaderboard = reactive([])
 
 // Computed properties for filtered missions
 const currentMissions = computed(() => {
-  return allMissions.filter(mission => mission.isActive && !mission.isCompleted)
+  return joinedMissions.value.filter(mission => !mission.isCompleted)
 })
 
 const availableMissions = computed(() => {
-  return allMissions.filter(mission => !mission.isActive)
+  // Filter out missions that are already joined
+  const joinedMissionIds = joinedMissions.value.map(m => m.id)
+  return allMissions.filter(mission => !joinedMissionIds.includes(mission.id))
 })
-
-// Leaderboard data
-const leaderboard = reactive([
-  { id: 1, username: '@johndoe123', points: 850, isCurrentUser: false },
-  { id: 2, username: '@sarahsmith', points: 720, isCurrentUser: false },
-  { id: 3, username: '@mikebrown', points: 615, isCurrentUser: false },
-  { id: 4, username: '@sri1809', points: 400, isCurrentUser: false },
-  { id: 5, username: '@ayushi23', points: 367, isCurrentUser: false },
-  { id: 6, username: '@ruchi4567', points: 340, isCurrentUser: false },
-  { id: 7, username: '@frenny56789', points: 320, isCurrentUser: false },
-  { id: 8, username: '@chicken345', points: 0, isCurrentUser: true },
-  { id: 9, username: '@brinda670988', points: 310, isCurrentUser: false }
-])
 
 // Computed property for sorted leaderboard (descending order by points)
 const sortedLeaderboard = computed(() => {
@@ -304,108 +259,214 @@ const sortedLeaderboard = computed(() => {
 })
 
 // Vouchers data
-const vouchers = reactive([
-  { id: 1, amount: '$5', title: '$5 Discount Voucher', points: 500 },
-  { id: 2, amount: '$10', title: '$10 Discount Voucher', points: 1000 },
-  { id: 3, amount: '$5', title: '$5 Discount Voucher', points: 500 },
-  { id: 4, amount: '$10', title: '$10 Discount Voucher', points: 1000 }
-])
+const availableVouchers = ref([])
+const userVouchers = ref([])
 
-// User's redeemed vouchers
-const userVouchers = reactive([])
+// Polling intervals
+const leaderboardInterval = ref(null)
+const walletInterval = ref(null)
 
-// Function to save user points to localStorage
-const saveUserPoints = (points) => {
+// Function to fetch wallet data (user points and vouchers)
+const fetchWalletData = async () => {
   try {
-    localStorage.setItem('userPoints', points.toString());
-    console.log('Saved user points to localStorage:', points);
-  } catch (error) {
-    console.error('Error saving user points to localStorage:', error);
-  }
-}
-
-// Function to load user points from localStorage
-const loadUserPoints = () => {
-  try {
-    const storedPoints = localStorage.getItem('userPoints');
-    if (storedPoints !== null) {
-      userPoints.value = parseInt(storedPoints, 10);
-      console.log('Loaded user points from localStorage:', userPoints.value);
-      
-      // Update the current user in the leaderboard
-      const currentUser = leaderboard.find(user => user.isCurrentUser);
-      if (currentUser) {
-        currentUser.points = userPoints.value;
-      }
+    const response = await fetch(`http://localhost:5402/wallet/${userId.value}`)
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch wallet data: ${response.status}`)
     }
+    
+    const data = await response.json()
+    
+    // Update user points
+    userPoints.value = data.points || 0
+    
+    // Update user vouchers
+    userVouchers.value = data.vouchers || []
+    
+    console.log('Wallet data fetched successfully:', data)
+    return data
   } catch (error) {
-    console.error('Error loading user points from localStorage:', error);
+    console.error('Error fetching wallet data:', error)
+    // Don't set the error state here to avoid blocking the UI
+    // if only the wallet fetch fails
+    return null
   }
 }
 
-// Function to save missions state to localStorage
-const saveMissionsState = () => {
+// Function to fetch leaderboard data
+const fetchLeaderboardData = async () => {
   try {
-    localStorage.setItem('userMissions', JSON.stringify(allMissions));
-    console.log('Saved missions state to localStorage');
-  } catch (error) {
-    console.error('Error saving missions state to localStorage:', error);
-  }
-}
-
-// Function to load missions state from localStorage
-const loadMissionsState = () => {
-  try {
-    const storedMissions = localStorage.getItem('userMissions');
-    if (storedMissions) {
-      const parsedMissions = JSON.parse(storedMissions);
-      
-      // Update each mission in allMissions with the stored state
-      parsedMissions.forEach((storedMission) => {
-        const missionIndex = allMissions.findIndex(m => m.id === storedMission.id);
-        if (missionIndex !== -1) {
-          Object.assign(allMissions[missionIndex], storedMission);
-        }
-      });
-      
-      console.log('Loaded missions state from localStorage');
+    const response = await fetch('http://localhost:5404/leaderboard/top')
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch leaderboard data: ${response.status}`)
     }
+    
+    const data = await response.json()
+    
+    // Clear existing leaderboard
+    leaderboard.splice(0, leaderboard.length)
+    
+    // Add new leaderboard data
+    data.forEach(user => {
+      leaderboard.push({
+        id: user.id,
+        username: user.username,
+        points: user.points,
+        isCurrentUser: user.id === userId.value
+      })
+    })
+    
+    console.log('Leaderboard data fetched successfully:', data)
+    return data
   } catch (error) {
-    console.error('Error loading missions state from localStorage:', error);
+    console.error('Error fetching leaderboard data:', error)
+    // Don't set the error state here to avoid blocking the UI
+    // if only the leaderboard fetch fails
+    return null
+  }
+}
+
+// Function to fetch available voucher templates
+const fetchAvailableVouchers = async () => {
+  try {
+    const response = await fetch('http://localhost:5406/voucher/templates')
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch voucher templates: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    availableVouchers.value = data
+    
+    console.log('Voucher templates fetched successfully:', data)
+    return data
+  } catch (error) {
+    console.error('Error fetching voucher templates:', error)
+    // Don't set the error state here to avoid blocking the UI
+    // if only the vouchers fetch fails
+    return null
+  }
+}
+
+// Function to fetch joined missions
+const fetchJoinedMissions = async () => {
+  try {
+    const response = await fetch(`http://localhost:5403/mission/status/200`)
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch joined missions: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    joinedMissions.value = data
+    
+    console.log('Joined missions fetched successfully:', data)
+    return data
+  } catch (error) {
+    console.error('Error fetching joined missions:', error)
+    // Don't set the error state here to avoid blocking the UI
+    // if only the missions fetch fails
+    return null
+  }
+}
+
+// Function to fetch available missions from Supabase
+const fetchAvailableMissions = async () => {
+  try {
+    const { data, error: supabaseError } = await supabase
+      .from('mission')
+      .select('*')
+    
+    if (supabaseError) {
+      throw new Error(supabaseError.message)
+    }
+    
+    // Clear existing missions
+    allMissions.splice(0, allMissions.length)
+    
+    // Add new missions
+    if (data && data.length > 0) {
+      data.forEach(mission => {
+        allMissions.push({
+          id: mission.id,
+          title: mission.title,
+          description: mission.description || '',
+          points: mission.points || 100,
+          total: mission.steps || 1
+        })
+      })
+    }
+    
+    console.log('Available missions fetched successfully:', data)
+    return data
+  } catch (error) {
+    console.error('Error fetching available missions:', error)
+    // Don't set the error state here to avoid blocking the UI
+    // if only the available missions fetch fails
+    return null
+  }
+}
+
+// Function to fetch all data
+const fetchAllData = async () => {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    // Fetch all data in parallel
+    const results = await Promise.all([
+      fetchWalletData(),
+      fetchLeaderboardData(),
+      fetchAvailableVouchers(),
+      fetchJoinedMissions(),
+      fetchAvailableMissions()
+    ])
+    
+    // Check if any of the fetches failed
+    const anyFailed = results.some(result => result === null)
+    
+    if (anyFailed) {
+      console.warn('Some data fetches failed, but continuing with available data')
+    }
+    
+  } catch (err) {
+    error.value = err.message || 'Failed to load data'
+    console.error('Error fetching all data:', err)
+  } finally {
+    isLoading.value = false
   }
 }
 
 // Function to join a mission
 const joinMission = async (mission) => {
   try {
-    // Simulate API call to join mission
-    // In a real app, you would make an actual API call here
-    // const response = await fetch('/api/missions/join', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ missionId: mission.id })
-    // })
-    // const data = await response.json()
+    // Call the API to join the mission
+    const response = await fetch('http://localhost:5403/mission/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: userId.value,
+        mission_id: mission.id
+      })
+    })
     
-    // Simulate successful response
-    const missionToUpdate = allMissions.find(m => m.id === mission.id)
-    
-    if (missionToUpdate) {
-      // Update mission status
-      missionToUpdate.isActive = true
-      missionToUpdate.inProgress = true
-      missionToUpdate.current = 0
-      
-      // Save missions state to localStorage
-      saveMissionsState();
-      
-      // Show popup
-      popupData.title = 'Mission Joined'
-      popupData.message = `You've joined the "${mission.title}" mission. Complete it to earn ${mission.points} points!`
-      popupData.success = true
-      popupData.buttonText = 'Start Mission'
-      showPopup.value = true
+    if (!response.ok) {
+      throw new Error(`Failed to join mission: ${response.status}`)
     }
+    
+    // Refresh joined missions
+    await fetchJoinedMissions()
+    
+    // Show popup
+    popupData.title = 'Mission Joined'
+    popupData.message = `You've joined the "${mission.title}" mission. Complete it to earn ${mission.points} points!`
+    popupData.success = true
+    popupData.buttonText = 'Start Mission'
+    showPopup.value = true
+    
   } catch (error) {
     console.error('Error joining mission:', error)
     
@@ -421,63 +482,55 @@ const joinMission = async (mission) => {
 // Function to complete a mission
 const completeMission = async (mission) => {
   try {
-    // Simulate API call to complete mission
-    // In a real app, you would make an actual API call here
-    // const response = await fetch('/api/missions/complete', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ missionId: mission.id })
-    // })
-    // const data = await response.json()
+    // Call the API to complete the mission
+    const response = await fetch(`http://localhost:5403/mission/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: userId.value,
+        mission_id: mission.id
+      })
+    })
     
-    // Simulate successful response
-    const missionToUpdate = allMissions.find(m => m.id === mission.id)
-    
-    if (missionToUpdate) {
-      // Update mission status
-      missionToUpdate.current = missionToUpdate.total
-      missionToUpdate.isCompleted = true
-      missionToUpdate.inProgress = false
-      
-      // Set completion date
-      const today = new Date()
-      missionToUpdate.completionDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear().toString().substr(-2)}`
-      
-      // Award points
-      userPoints.value += missionToUpdate.points
-      lastPointsAwarded.value = missionToUpdate.points
-      
-      // Save user points to localStorage
-      saveUserPoints(userPoints.value);
-      
-      // Save missions state to localStorage
-      saveMissionsState();
-      
-      // Update leaderboard
-      const currentUser = leaderboard.find(user => user.isCurrentUser)
-      if (currentUser) {
-        currentUser.points += missionToUpdate.points
-      }
-      
-      // Show points updated animation
-      pointsUpdated.value = true
-      setTimeout(() => {
-        pointsUpdated.value = false
-      }, 2000)
-      
-      // Show toast notification
-      showPointsToast.value = true
-      setTimeout(() => {
-        showPointsToast.value = false
-      }, 3000)
-      
-      // Show success popup
-      popupData.title = 'Mission Completed'
-      popupData.message = `Congratulations! You've completed the "${mission.title}" mission and earned ${mission.points} points!`
-      popupData.success = true
-      popupData.buttonText = 'Claim Reward'
-      showPopup.value = true
+    if (!response.ok) {
+      throw new Error(`Failed to complete mission: ${response.status}`)
     }
+    
+    const data = await response.json()
+    
+    // Update points awarded
+    lastPointsAwarded.value = mission.points
+    
+    // Refresh wallet data to get updated points
+    await fetchWalletData()
+    
+    // Refresh joined missions
+    await fetchJoinedMissions()
+    
+    // Refresh leaderboard
+    await fetchLeaderboardData()
+    
+    // Show points updated animation
+    pointsUpdated.value = true
+    setTimeout(() => {
+      pointsUpdated.value = false
+    }, 2000)
+    
+    // Show toast notification
+    showPointsToast.value = true
+    setTimeout(() => {
+      showPointsToast.value = false
+    }, 3000)
+    
+    // Show success popup
+    popupData.title = 'Mission Completed'
+    popupData.message = `Congratulations! You've completed the "${mission.title}" mission and earned ${mission.points} points!`
+    popupData.success = true
+    popupData.buttonText = 'Claim Reward'
+    showPopup.value = true
+    
   } catch (error) {
     console.error('Error completing mission:', error)
     
@@ -504,45 +557,28 @@ const redeemVoucher = async (voucher) => {
       return
     }
     
-    // Simulate API call to validate points and redeem voucher
-    // In a real app, you would make an actual API call here
-    // const response = await fetch('/api/vouchers/redeem', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ voucherId: voucher.id })
-    // })
-    // const data = await response.json()
+    // Call the API to redeem the voucher
+    const response = await fetch(`http://localhost:5402/wallet/redeem`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: userId.value,
+        voucher_id: voucher.id,
+        points: voucher.points
+      })
+    })
     
-    // Simulate successful response
-    // Deduct points
-    userPoints.value -= voucher.points
-    
-    // Save updated points to localStorage
-    saveUserPoints(userPoints.value);
-    
-    // Update leaderboard
-    const currentUser = leaderboard.find(user => user.isCurrentUser)
-    if (currentUser) {
-      currentUser.points -= voucher.points
+    if (!response.ok) {
+      throw new Error(`Failed to redeem voucher: ${response.status}`)
     }
     
-    // Add voucher to user's vouchers
-    const expiryDate = new Date()
-    expiryDate.setMonth(expiryDate.getMonth() + 3)
-    const formattedExpiryDate = `${expiryDate.getDate()}/${expiryDate.getMonth() + 1}/${expiryDate.getFullYear()}`
+    // Refresh wallet data to get updated points and vouchers
+    await fetchWalletData()
     
-    const newVoucher = {
-      id: Date.now(), // Generate a unique ID
-      amount: voucher.amount,
-      title: voucher.title,
-      expiryDate: formattedExpiryDate,
-      code: generateVoucherCode() // Generate a unique voucher code
-    }
-    
-    userVouchers.push(newVoucher)
-    
-    // Save voucher to localStorage for cart page to access
-    saveVoucherToStorage(newVoucher)
+    // Refresh leaderboard
+    await fetchLeaderboardData()
     
     // Show success popup
     popupData.title = 'Voucher Redeemed'
@@ -550,6 +586,7 @@ const redeemVoucher = async (voucher) => {
     popupData.success = true
     popupData.buttonText = 'OK'
     showPopup.value = true
+    
   } catch (error) {
     console.error('Error redeeming voucher:', error)
     
@@ -562,72 +599,47 @@ const redeemVoucher = async (voucher) => {
   }
 }
 
-// Function to generate a random voucher code
-const generateVoucherCode = () => {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let code = ''
-  for (let i = 0; i < 8; i++) {
-    code += characters.charAt(Math.floor(Math.random() * characters.length))
-  }
-  return code
-}
-
-// Function to save voucher to localStorage
-const saveVoucherToStorage = (voucher) => {
+// Function to use a voucher
+const useVoucher = async (voucher) => {
   try {
-    // Get existing vouchers from localStorage
-    const existingVouchers = JSON.parse(localStorage.getItem('userVouchers') || '[]')
-    
-    // Add new voucher
-    existingVouchers.push({
-      id: voucher.id,
-      amount: voucher.amount,
-      title: voucher.title,
-      expiryDate: voucher.expiryDate,
-      code: voucher.code,
-      value: parseInt(voucher.amount.replace('$', '')) // Extract numeric value
+    // Call the API to use the voucher
+    const response = await fetch(`http://localhost:5402/wallet/use-voucher`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: userId.value,
+        voucher_id: voucher.id
+      })
     })
     
-    // Save back to localStorage
-    localStorage.setItem('userVouchers', JSON.stringify(existingVouchers))
-  } catch (error) {
-    console.error('Error saving voucher to localStorage:', error)
-  }
-}
-
-// Function to use a voucher
-const useVoucher = (voucher) => {
-  // Mark voucher as active in localStorage
-  try {
-    // Get existing vouchers from localStorage
-    const existingVouchers = JSON.parse(localStorage.getItem('userVouchers') || '[]')
+    if (!response.ok) {
+      throw new Error(`Failed to use voucher: ${response.status}`)
+    }
     
-    // Find the voucher and mark it as active
-    const voucherIndex = existingVouchers.findIndex(v => v.id === voucher.id)
-    if (voucherIndex !== -1) {
-      existingVouchers[voucherIndex].isActive = true
+    // Show voucher applied notification
+    showVoucherApplied.value = true
+    setTimeout(() => {
+      showVoucherApplied.value = false
       
-      // Save back to localStorage
-      localStorage.setItem('userVouchers', JSON.stringify(existingVouchers))
-    }
+      // Refresh wallet data to get updated vouchers
+      fetchWalletData()
+      
+      // Redirect to cart page
+      window.location.href = '/cart'
+    }, 2000)
+    
   } catch (error) {
-    console.error('Error updating voucher in localStorage:', error)
+    console.error('Error using voucher:', error)
+    
+    // Show error popup
+    popupData.title = 'Error'
+    popupData.message = 'Failed to use voucher. Please try again later.'
+    popupData.success = false
+    popupData.buttonText = 'OK'
+    showPopup.value = true
   }
-  
-  // Show voucher applied notification
-  showVoucherApplied.value = true
-  setTimeout(() => {
-    showVoucherApplied.value = false
-    
-    // Remove the voucher from user's vouchers
-    const index = userVouchers.findIndex(v => v.id === voucher.id)
-    if (index !== -1) {
-      userVouchers.splice(index, 1)
-    }
-    
-    // Redirect to cart page
-    window.location.href = '/cart'
-  }, 2000)
 }
 
 // Function to close popup
@@ -635,63 +647,39 @@ const closePopup = () => {
   showPopup.value = false
 }
 
-// Load vouchers from localStorage on component mount
-const loadVouchersFromStorage = () => {
-  try {
-    // Clear localStorage vouchers when starting the app
-    if (window.sessionStorage.getItem('appJustStarted') !== 'true') {
-      localStorage.removeItem('userVouchers');
-      window.sessionStorage.setItem('appJustStarted', 'true');
-    }
-    
-    const storedVouchers = JSON.parse(localStorage.getItem('userVouchers') || '[]')
-    
-    // Filter out vouchers that are already active
-    const inactiveVouchers = storedVouchers.filter(v => !v.isActive)
-    
-    // Update userVouchers with stored vouchers
-    inactiveVouchers.forEach(v => {
-      // Check if voucher already exists in userVouchers
-      const exists = userVouchers.some(uv => uv.id === v.id)
-      if (!exists) {
-        userVouchers.push({
-          id: v.id,
-          amount: v.amount,
-          title: v.title,
-          expiryDate: v.expiryDate,
-          code: v.code
-        })
-      }
-    })
-  } catch (error) {
-    console.error('Error loading vouchers from localStorage:', error)
+// Set up polling for leaderboard and wallet data
+const setupPolling = () => {
+  // Poll leaderboard every 30 seconds
+  leaderboardInterval.value = setInterval(fetchLeaderboardData, 30000)
+  
+  // Poll wallet data every 60 seconds
+  walletInterval.value = setInterval(fetchWalletData, 60000)
+}
+
+// Clean up polling intervals
+const cleanupPolling = () => {
+  if (leaderboardInterval.value) {
+    clearInterval(leaderboardInterval.value)
+  }
+  
+  if (walletInterval.value) {
+    clearInterval(walletInterval.value)
   }
 }
 
 // Initialize component
 onMounted(() => {
-  // Clear localStorage vouchers when starting the app
-  if (window.sessionStorage.getItem('appJustStarted') !== 'true') {
-    localStorage.removeItem('userVouchers');
-    localStorage.removeItem('userPoints');
-    localStorage.removeItem('userMissions');
-    window.sessionStorage.setItem('appJustStarted', 'true');
-  }
+  // Fetch all data
+  fetchAllData()
   
-  // Load user points from localStorage
-  loadUserPoints();
-  
-  // Load missions state from localStorage
-  loadMissionsState();
-  
-  // Load vouchers from localStorage
-  loadVouchersFromStorage();
-});
+  // Set up polling
+  setupPolling()
+})
 
-// Watch for changes to userPoints and save to localStorage
-watch(userPoints, (newPoints) => {
-  saveUserPoints(newPoints);
-});
+// Clean up when component is unmounted
+onUnmounted(() => {
+  cleanupPolling()
+})
 </script>
 
 <style>
@@ -724,6 +712,60 @@ button {
   cursor: pointer;
   border: none;
   background: none;
+}
+
+/* Loading and Error States */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #704116;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  color: #d32f2f;
+}
+
+.error-icon {
+  color: #d32f2f;
+  margin-bottom: 1rem;
+}
+
+.retry-button {
+  margin-top: 1rem;
+  padding: 0.5rem 1.5rem;
+  background-color: #704116;
+  color: white;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background-color: #5a3412;
 }
 
 /* Header Styles */

@@ -28,15 +28,29 @@
           <button 
             class="tab-btn" 
             :class="{ active: activeTab === 'status' }" 
-            @click="activeTab = 'status'"
+            @click="loadTradeInHistory(); activeTab = 'status';"
           >
             <ClipboardListIcon size="18" class="tab-icon" />
             Trade-In Status
           </button>
         </div>
 
+        <!--!-- Loading State -->
+        <div v-if="isLoading" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading data...</p>
+        </div>
+        
+        <!--!-- Error State -->
+        <div v-else-if="error" class="error-container">
+          <alert-circle-icon size="48" class="error-icon" />
+          <h3>Error Loading Data</h3>
+          <p>{{ error }}</p>
+          <button @click="loadTradeInHistory" class="retry-button">Retry</button>
+        </div>
+
         <!-- Submission Form - Enhanced styling -->
-        <div v-if="activeTab === 'submission'" class="submission-form">
+        <div v-else-if="activeTab === 'submission'" class="submission-form">
           <h3 class="brown-title">Submit Your Item for Trade-In</h3>
           <p>Fill in the details below and upload clear photos of your item for quality assessment.</p>
           
@@ -178,7 +192,7 @@
                   </button>
                 </div>
                 
-                <div class="upload-box" @click="triggerFileInput" v-if="imagePreviewUrls.length < 5">
+                <div class="upload-box" @click="triggerFileInput" v-if="imagePreviewUrls.length &lt; 5">
                   <UploadIcon size="24" />
                   <span>Upload Image</span>
                   <input 
@@ -198,16 +212,16 @@
             </div>
 
             <div class="form-actions">
-              <button type="submit" class="submit-btn" :disabled="imagePreviewUrls.length < 1">
+              <button type="submit" class="submit-btn" :disabled="imagePreviewUrls.length < 1 || isSubmitting">
                 <SendIcon size="18" />
-                Submit Trade-In Request
+                {{ isSubmitting ? 'Submitting...' : 'Submit Trade-In Request' }}
               </button>
             </div>
           </form>
         </div>
 
         <!-- Status Section - Enhanced card design -->
-        <div v-if="activeTab === 'status'" class="status-section">
+        <div v-else-if="activeTab === 'status' && !isLoading && !error" class="status-section">
           <h3 class="brown-title">Your Trade-In History</h3>
           
           <div v-if="tradeIns.length === 0" class="empty-state">
@@ -217,7 +231,7 @@
           </div>
           
           <div v-else class="trade-in-list">
-            <div v-for="(item, index) in tradeIns" :key="index" class="trade-in-card">
+            <div v-for="(item, index) in tradeIns" :key="item.id" class="trade-in-card">
               <div class="card-header">
                 <h4>{{ item.productName }}</h4>
                 <div class="status-badge" :class="getStatusClass(item.status)">
@@ -432,11 +446,11 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { 
   UserIcon, 
   HeartIcon, 
-  ShoppingCartIcon, 
+  ShoppingCart as ShoppingCartIcon, 
   UploadIcon, 
   XIcon, 
   PackageIcon,
@@ -461,8 +475,16 @@ import {
   GiftIcon
 } from 'lucide-vue-next';
 
+// User ID - In a real app, this would come from authentication
+const userId = ref(200);
+
 // Active tab state
 const activeTab = ref('submission');
+
+// Loading and error states
+const isLoading = ref(false);
+const error = ref(null);
+const isSubmitting = ref(false);
 
 // Form data
 const form = reactive({
@@ -494,61 +516,8 @@ const showAcceptedDetails = ref(false);
 const phoneError = ref(false);
 const ageError = ref(false);
 
-// Total sustainability points - to be shared with Rewards.vue
-const sustainabilityPoints = ref(0);
-
-// Create a method to update points that can be called from this component
-// and potentially exposed to other components
-const updateSustainabilityPoints = (points) => {
-  sustainabilityPoints.value += points;
-  
-  // Store points in localStorage to persist between page refreshes
-  localStorage.setItem('sustainabilityPoints', sustainabilityPoints.value);
-  
-  // Emit an event that Rewards.vue can listen for
-  // This requires setting up an event bus or using a state management solution
-  emitPointsUpdated();
-};
-
-// Example of how to set up a simple event bus for Vue 3
-// In a real application, you would define this in a separate file
-const emitter = (() => {
-  const events = {};
-  
-  const on = (event, callback) => {
-    if (!events[event]) {
-      events[event] = [];
-    }
-    events[event].push(callback);
-  };
-  
-  const emit = (event, data) => {
-    if (!events[event]) return;
-    events[event].forEach(callback => callback(data));
-  };
-  
-  return { on, emit };
-})();
-
-// Function to emit the points updated event
-const emitPointsUpdated = () => {
-  // Using our simple event bus
-  emitter.emit('points-updated', sustainabilityPoints.value);
-  
-  // Alternative: If you're using Pinia or Vuex, you would dispatch an action here
-  // Example with Pinia: useUserStore().updatePoints(sustainabilityPoints.value)
-};
-
-// Initialize points from localStorage if available
-const initPoints = () => {
-  const storedPoints = localStorage.getItem('sustainabilityPoints');
-  if (storedPoints) {
-    sustainabilityPoints.value = parseInt(storedPoints, 10);
-  }
-};
-
-// Call initPoints when component is mounted
-initPoints();
+// Trade-in history
+const tradeIns = ref([]);
 
 const validatePhoneNumber = () => {
   // Remove any non-numeric characters
@@ -606,8 +575,32 @@ const removeImage = (index) => {
   uploadedFiles.value.splice(index, 1);
 };
 
+// Function to load trade-in history
+const loadTradeInHistory = async () => {
+  isLoading.value = true;
+  error.value = null;
+  
+  try {
+    const response = await fetch(`http://localhost:5400/trade-in/${userId.value}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch trade-in history: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    tradeIns.value = data;
+    
+    console.log('Trade-in history fetched successfully:', data);
+  } catch (err) {
+    error.value = err.message || 'Failed to load trade-in history';
+    console.error('Error fetching trade-in history:', err);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 // Form submission
-const submitTradeIn = () => {
+const submitTradeIn = async () => {
   // Validate phone number before submission
   validatePhoneNumber();
   validateAge();
@@ -617,66 +610,115 @@ const submitTradeIn = () => {
     return;
   }
   
-  // Here you would typically send the form data and images to your backend
-  console.log('Form submitted:', form);
-  console.log('Uploaded files:', uploadedFiles.value);
+  if (imagePreviewUrls.value.length < 1) {
+    alert('Please upload at least one image of your item');
+    return;
+  }
   
-  // Format category and condition for display
-  const formatCategory = (category) => {
-    if (!category) return '';
+  isSubmitting.value = true;
+  
+  try {
+    // Create FormData object for multipart form upload
+    const formData = new FormData();
     
-    // Handle special case for "furniture-home-decor"
-    if (category === 'furniture-home-decor') return 'Furniture & Home Decor';
+    // Add form fields
+    formData.append('user_id', userId.value);
+    formData.append('product_name', form.productName);
+    formData.append('category', form.category);
+    formData.append('description', form.description);
+    formData.append('condition', form.condition);
+    formData.append('age', form.age);
+    formData.append('full_name', form.fullName);
+    formData.append('email', form.email);
+    formData.append('phone', form.phone);
+    formData.append('address', form.address);
     
-    // Split by hyphen, capitalize each word, and join with space
-    return category.split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-  
-  const formatCondition = (condition) => {
-    if (!condition) return '';
-    return condition.charAt(0).toUpperCase() + condition.slice(1);
-  };
-  
-  // For demo purposes, add the submission to the trade-ins list
-  tradeIns.value.unshift({
-    productName: form.productName,
-    category: formatCategory(form.category),
-    condition: formatCondition(form.condition),
-    offeredValue: Math.floor(Math.random() * 200000) + 50000, // Random offered value for demo
-    submittedDate: new Date(),
-    status: 'Pending',
-    image: imagePreviewUrls.value[0] || '/placeholder.svg?height=200&width=200'
-  });
-  
-  // Reset form
-  Object.keys(form).forEach(key => {
-    form[key] = '';
-  });
-  imagePreviewUrls.value = [];
-  uploadedFiles.value = [];
-  
-  // Switch to status tab to show the new submission
-  activeTab.value = 'status';
+    // Add images
+    uploadedFiles.value.forEach((file, index) => {
+      formData.append(`image_${index}`, file);
+    });
+    
+    // Submit the form data
+    const response = await fetch('http://localhost:5400/trade-in/upload', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to submit trade-in request: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Trade-in submitted successfully:', data);
+    
+    // Reset form
+    Object.keys(form).forEach(key => {
+      form[key] = '';
+    });
+    imagePreviewUrls.value = [];
+    uploadedFiles.value = [];
+    
+    // Refresh trade-in history
+    await loadTradeInHistory();
+    
+    // Switch to status tab to show the new submission
+    activeTab.value = 'status';
+    
+  } catch (error) {
+    console.error('Error submitting trade-in:', error);
+    alert(`Failed to submit trade-in request: ${error.message}`);
+  } finally {
+    isSubmitting.value = false;
+  }
 };
 
 // Claim reward points function
-const claimRewardPoints = (item, index) => {
-  // Update the item status to claimed
-  tradeIns.value[index].status = 'Claimed';
-  tradeIns.value[index].claimedDate = new Date();
-  
-  // Add 20 points to the user's sustainability points
-  updateSustainabilityPoints(20);
-  
-  // Show notification
-  showNotification.value = true;
-};
-
-// Modified to remove navigation - just close the popup
-const navigateToCart = () => {
-  showNotification.value = false;
+const claimRewardPoints = async (item, index) => {
+  try {
+    // Call the API to claim reward points
+    const response = await fetch(`http://localhost:5402/wallet/add-points`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: userId.value,
+        points: 20,
+        source: 'trade-in',
+        trade_in_id: item.id
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to claim reward points: ${response.status}`);
+    }
+    
+    // Update the item status to claimed
+    const updateResponse = await fetch(`http://localhost:5400/trade-in/update-status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        trade_in_id: item.id,
+        status: 'Claimed'
+      })
+    });
+    
+    if (!updateResponse.ok) {
+      throw new Error(`Failed to update trade-in status: ${updateResponse.status}`);
+    }
+    
+    // Refresh trade-in history
+    await loadTradeInHistory();
+    
+    // Show notification
+    showNotification.value = true;
+    
+  } catch (error) {
+    console.error('Error claiming reward points:', error);
+    alert(`Failed to claim reward points: ${error.message}`);
+  }
 };
 
 // Update the viewDetails function to handle the "Claimed" status the same as "Accepted"
@@ -701,41 +743,39 @@ const confirmCancelRequest = (index) => {
 };
 
 // Cancel request function
-const cancelRequest = () => {
+const cancelRequest = async () => {
   if (itemToCancel.value !== null) {
-    tradeIns.value.splice(itemToCancel.value, 1);
-    itemToCancel.value = null;
-    showCancelConfirmation.value = false;
+    try {
+      const itemId = tradeIns.value[itemToCancel.value].id;
+      
+      // Call the API to cancel the trade-in request
+      const response = await fetch(`http://localhost:5400/trade-in/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          trade_in_id: itemId
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to cancel trade-in request: ${response.status}`);
+      }
+      
+      // Refresh trade-in history
+      await loadTradeInHistory();
+      
+      // Close the confirmation popup
+      showCancelConfirmation.value = false;
+      itemToCancel.value = null;
+      
+    } catch (error) {
+      console.error('Error canceling trade-in request:', error);
+      alert(`Failed to cancel trade-in request: ${error.message}`);
+    }
   }
 };
-
-// Sample trade-in data
-const tradeIns = ref([
-  {
-    productName: 'Asgaard Sofa',
-    category: 'Furniture & Home Decor',
-    condition: 'Excellent',
-    submittedDate: new Date(2025, 2, 15),
-    status: 'Accepted',
-    image: '/placeholder.svg?height=200&width=200'
-  },
-  {
-    productName: 'Vintage Coffee Table',
-    category: 'Furniture & Home Decor',
-    condition: 'Good',
-    submittedDate: new Date(2025, 2, 25),
-    status: 'Pending',
-    image: '/placeholder.svg?height=200&width=200'
-  },
-  {
-    productName: 'Wooden Bookshelf',
-    category: 'Furniture & Home Decor',
-    condition: 'Fair',
-    submittedDate: new Date(2025, 1, 10),
-    status: 'Rejected',
-    image: '/placeholder.svg?height=200&width=200'
-  }
-]);
 
 // Helper functions
 const formatDate = (date) => {
@@ -756,12 +796,12 @@ const getStatusClass = (status) => {
   }
 };
 
-// Export the sustainability points and update method for use in other components
-// This allows Rewards.vue to import and use these values
-defineExpose({
-  sustainabilityPoints,
-  updateSustainabilityPoints,
-  emitter // Export the event emitter for other components to listen to events
+// Initialize component
+onMounted(() => {
+  // Load trade-in history if the status tab is active
+  if (activeTab.value === 'status') {
+    loadTradeInHistory();
+  }
 });
 </script>
 
@@ -784,6 +824,60 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+/* Loading and Error States */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #704116;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  color: #d32f2f;
+}
+
+.error-icon {
+  color: #d32f2f;
+  margin-bottom: 1rem;
+}
+
+.retry-button {
+  margin-top: 1rem;
+  padding: 0.5rem 1.5rem;
+  background-color: #704116;
+  color: white;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background-color: #5a3412;
 }
 
 /* Updated Hero Section with blurred background */
