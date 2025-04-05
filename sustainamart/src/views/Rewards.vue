@@ -94,7 +94,7 @@
                 <div class="leaderboard-user">
                   <div class="user-name">{{ user.id }} {{ user.isCurrentUser ? '(You)' : '' }}</div>
                 </div>
-                <div class="user-score" :class="{ 'points-updated': user.isCurrentUser && pointsUpdated }">{{ user.points }}</div>
+                <div class="user-score" :class="{ 'points-updated': user.isCurrentUser && pointsUpdated }">{{ user.total_points }}</div>
               </div>
             </div>
           </div>
@@ -312,7 +312,7 @@ const fetchLeaderboardData = async () => {
       leaderboard.push({
         id: user.id,
         username: user.username,
-        points: user.points,
+        points: user.total_points,
         isCurrentUser: user.id === userId.value
       })
     })
