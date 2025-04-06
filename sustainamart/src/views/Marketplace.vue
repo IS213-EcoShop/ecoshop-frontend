@@ -499,6 +499,47 @@ export default {
       // Update cart count from server after server update
       await this.updateCartItemCount();
     },
+    
+    async addToServerCart(product, quantity) {
+      try {
+        const userId = 200; // This can be dynamic depending on your user session
+
+        // Create the request payload
+        const requestBody = {
+          product: {
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            stock: product.stock,
+            image: product.image
+          },
+          quantity: quantity,
+          user_id: userId
+        };
+
+        // Send a POST request to your backend
+        const response = await fetch('http://127.0.0.1:8000/cart/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to add product to cart: ${response.statusText}`);
+        }
+
+        const responseData = await response.json();
+        console.log('Product added to server cart:', responseData);
+        return true;
+      } catch (error) {
+        console.error('Error adding product to server cart:', error);
+        return false;
+      }
+    },
+
 
     // Update server-side cart
     async updateServerCart(productId, quantity) {

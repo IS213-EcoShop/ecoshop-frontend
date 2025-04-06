@@ -479,7 +479,7 @@ export default {
         console.log("🔄 Initiating checkout...");
         
         // Place order via microservice
-        const placeOrderResponse = await fetch('http://127.0.0.1:5301/place_order', {
+        const placeOrderResponse = await fetch(' http://127.0.0.1:8000/place_order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userID: this.userId })
@@ -576,7 +576,7 @@ export default {
           console.log(`Payment status check #${this.checkCount}`);
           
           // Use the correct endpoint and payment ID
-          const statusResponse = await fetch(`http://127.0.0.1:5202/payment/${paymentId}`, {
+          const statusResponse = await fetch(`http://localhost:8000/payment/${paymentId}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
           });
@@ -655,7 +655,7 @@ export default {
         this.checkCount++;
         
         // Use the correct endpoint and payment ID
-        const statusResponse = await fetch(`http://127.0.0.1:5202/payment/${paymentId}`, {
+        const statusResponse = await fetch(`http://localhost:8000/payment/${paymentId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
