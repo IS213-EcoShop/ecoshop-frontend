@@ -67,15 +67,21 @@
           <div class="card">
             <h3 class="section-title">Earn Points</h3>
             
-            <div class="earn-points-grid">
+            <div v-if="availableMissions.length > 0" class="earn-points-grid">
               <div v-for="mission in availableMissions" :key="mission.id" class="earn-points-card">
                 <span class="points-badge">Get +{{ mission.reward_points }} points</span>
                 <h4 class="earn-points-title">{{ mission.description }}</h4>
                 <button @click="joinMission(mission)" class="join-button">Join Mission</button>
               </div>
             </div>
+
+            <div v-else class="empty-missions">
+              <p>No available missions at the moment. Check back later!</p>
+            </div>
           </div>
         </div>
+
+  
         
         <div class="column">
           <div class="card">
@@ -249,7 +255,7 @@ const currentMissions = computed(() => {
 
 const availableMissions = computed(() => {
   // Filter out missions that are already joined
-  const joinedMissionIds = joinedMissions.value.map(m => m.id)
+  const joinedMissionIds = joinedMissions.value.map(mission => mission.id)
   return allMissions.filter(mission => !joinedMissionIds.includes(mission.id))
 })
 
@@ -398,10 +404,10 @@ const fetchAvailableMissions = async () => {
       data.forEach(mission => {
         allMissions.push({
           id: mission.id,
-          title: mission.name,
-          description: mission.description || '',
-          points: mission.reward_points || 100,
-          total: mission.goal || 1
+          name: mission.name,
+          description: mission.description || mission.name,
+          reward_points: mission.reward_points || 100,
+          goal: mission.goal || 1
         })
       })
     }
