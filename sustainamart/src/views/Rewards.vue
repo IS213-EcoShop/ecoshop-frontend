@@ -47,7 +47,7 @@
                 </div>
                 <h4 class="mission-title">{{ mission.name }}</h4>
                 <div class="progress-bar">
-                  <div class="progress-fill" :style="{ width: `${(mission.current / mission.goal) * 100}%` }"></div>
+                  <div class="progress-fill" :style="{ width: `${Math.min((mission.current / mission.goal) * 100, 100)}%` }"></div>
                 </div>
                 <p class="mission-date">{{ mission.inProgress ? 'In progress' : `Completed before ${mission.completionDate}` }}</p>
                 <button 
@@ -359,7 +359,15 @@ const fetchJoinedMissions = async () => {
     }
     
     const data = await response.json()
-    joinedMissions.value = data
+
+    // Map the missions to ensure they have the correct properties
+    joinedMissions.value = data.map(mission => ({
+      ...mission,
+      // If these properties don't exist in your API response, add them
+      current: mission.current || 0, // Set current progress to 0 if not provided
+      goal: mission.goal || 1,       // Set goal to 1 if not provided
+      inProgress: mission.current < mission.goal // Add inProgress flag
+    }))
     
     console.log('Joined missions fetched successfully:', data)
     return data
