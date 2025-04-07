@@ -581,7 +581,7 @@ const loadTradeInHistory = async () => {
   error.value = null;
   
   try {
-    const response = await fetch(`http://localhost:5400/trade-in/${userId.value}`);
+    const response = await fetch(`http://localhost:5400/trade-in`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch trade-in history: ${response.status}`);
@@ -639,7 +639,7 @@ const submitTradeIn = async () => {
     });
     
     // Submit the form data
-    const response = await fetch('http://localhost:5400/trade-in/upload', {
+    const response = await fetch('http://localhost:5400/trade-in/request', {
       method: 'POST',
       body: formData
     });
@@ -676,7 +676,7 @@ const submitTradeIn = async () => {
 const claimRewardPoints = async (item, index) => {
   try {
     // Call the API to claim reward points
-    const response = await fetch(`http://localhost:5402/wallet/add-points`, {
+    const response = await fetch(`http://localhost:5402/wallet/credit`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -694,13 +694,13 @@ const claimRewardPoints = async (item, index) => {
     }
     
     // Update the item status to claimed
-    const updateResponse = await fetch(`http://localhost:5400/trade-in/update-status`, {
+    const updateResponse = await fetch(`http://localhost:5400/trade-in/status/${trade_in_id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        trade_in_id: item.id,
+        trade_in_id: trade_ins.id,
         status: 'Claimed'
       })
     });

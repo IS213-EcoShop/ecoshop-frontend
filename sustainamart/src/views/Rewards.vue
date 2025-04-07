@@ -50,7 +50,7 @@
                   <div class="progress-fill" :style="{ width: `${Math.min((mission.current / mission.goal) * 100, 100)}%` }"></div>
                 </div>
                 <p class="mission-date">{{ mission.inProgress ? 'In progress' : `Completed before ${mission.completionDate}` }}</p>
-                <!-- Complete Mission button removed as requested -->
+                <p class="mission-instruction">{{ getMissionInstruction(mission.event_type) }}</p>
               </div>
             </div>
             <div v-else class="empty-missions">
@@ -90,7 +90,7 @@
                   {{ index + 1 }}
                 </div>
                 <div class="leaderboard-user">
-                  <div class="user-name">{{ user.id }} {{ user.isCurrentUser ? '(You)' : '' }}</div>
+                  <div class="user-name">{{ user.username }} {{ user.isCurrentUser ? '(You)' : '' }}</div>
                 </div>
                 <div class="user-score" :class="{ 'points-updated': user.isCurrentUser && pointsUpdated }">{{ user.total_points }}</div>
               </div>
@@ -275,6 +275,7 @@ const checkAndClearSession = () => {
     console.log('First load of the session, clearing joined missions')
     joinedMissions.value = []
     sessionStorage.setItem('lastSessionTime', currentTime)
+    sessionStorage.setItem('newSession', 'true')
     isFirstLoad.value = false
     return true
   }
@@ -285,6 +286,16 @@ const checkAndClearSession = () => {
 // Function to fetch wallet data (user points and vouchers)
 const fetchWalletData = async () => {
   try {
+    // Check if this is a new session
+    const isNewSession = sessionStorage.getItem('newSession') === 'true';
+    
+    if (isNewSession) {
+      console.log('New session detected, resetting points to 0');
+      sessionStorage.setItem('newSession', 'false');
+      userPoints.value = 0;
+      return { points: 0, vouchers: [] };
+    }
+    
     const response = await fetch(`http://localhost:5402/wallet/${userId.value}`)
     
     if (!response.ok) {
@@ -326,8 +337,8 @@ const fetchLeaderboardData = async () => {
     // Add new leaderboard data
     data.forEach(user => {
       leaderboard.push({
-        id: user.id,
-        username: user.username || user.id,
+        id: user.user_id,
+        username: user.username,
         total_points: user.total_points || 0,
         isCurrentUser: user.id === userId.value
       })
@@ -472,6 +483,24 @@ const fetchAllData = async () => {
   }
 }
 
+// Add a helper function to get mission instructions
+const getMissionInstruction = (eventType) => {
+  switch (eventType) {
+    case 'purchase_eco_product':
+      return 'To complete: Purchase an eco-friendly product and proceed to checkout';
+    case 'recycle_item':
+      return 'To complete: Recycle an item at a collection point';
+    case 'reduce_carbon':
+      return 'To complete: Use eco-friendly shipping option at checkout';
+    case 'trade_in':
+      return 'To complete: Trade in an old item on the Trade-In page';
+    case 'checkout_completed':
+      return 'To complete: Finish a purchase by proceeding to checkout';
+    default:
+      return 'To complete: Follow the mission requirements';
+  }
+}
+
 // Function to join a mission
 const joinMission = async (mission) => {
   try {
@@ -506,12 +535,12 @@ const joinMission = async (mission) => {
     
     joinedMissions.value.push(newMission)
     
-    // Show popup
-    popupData.title = 'Mission Joined'
-    popupData.message = `You've joined the "${mission.name}" mission. Complete it to earn ${mission.reward_points} points!`
-    popupData.success = true
-    popupData.buttonText = 'Start Mission'
-    showPopup.value = true
+    // Show popup with specific instructions
+    popupData.title = 'Mission Joined';
+    popupData.message = `You've joined the "${mission.name}" mission. ${getMissionInstruction(mission.event_type)}`;
+    popupData.success = true;
+    popupData.buttonText = 'Got it!';
+    showPopup.value = true;
     
   } catch (error) {
     console.error('Error joining mission:', error)
@@ -594,7 +623,7 @@ const completeMission = async (mission) => {
   }
 }
 
-// Function to check for mission updates
+// Modify the checkMissionUpdates function to explicitly update wallet and leaderboard
 const checkMissionUpdates = async () => {
   try {
     // Only check if there are active missions
@@ -609,6 +638,16 @@ const checkMissionUpdates = async () => {
     
     // Check each event type
     for (const eventType of eventTypes) {
+      // Only check for mission updates if we're on the right page for the event type
+      // This prevents missions from being completed automatically
+      if (eventType === 'purchase_eco_product' && !window.location.pathname.includes('/cart')) {
+        continue; // Skip checking for eco product purchases unless we're on the cart page
+      }
+      
+      if (eventType === 'trade_in' && !window.location.pathname.includes('/trade-in')) {
+        continue; // Skip checking for trade-ins unless we're on the trade-in page
+      }
+      
       const response = await fetch(`http://localhost:5403/mission/check/${userId.value}/${eventType}`);
       
       if (!response.ok) continue;
@@ -616,18 +655,6 @@ const checkMissionUpdates = async () => {
       const data = await response.json();
       
       if (data.should_update) {
-        // If we should update, call the update endpoint
-        await fetch('http://localhost:5403/mission/update', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            user_id: userId.value,
-            event_type: eventType
-          })
-        });
-        
         // Find the mission that was updated
         const missionIndex = joinedMissions.value.findIndex(
           m => m.event_type === eventType && !m.completed
@@ -636,20 +663,71 @@ const checkMissionUpdates = async () => {
         if (missionIndex !== -1) {
           const mission = joinedMissions.value[missionIndex];
           
+          // Call the API to complete the mission
+          const updateResponse = await fetch(`http://localhost:5403/mission/update`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: userId.value,
+              event_type: eventType
+            })
+          });
+          
+          if (!updateResponse.ok) {
+            console.error(`Failed to update mission: ${updateResponse.status}`);
+            continue;
+          }
+          
           // Update the mission locally
-          joinedMissions.value[missionIndex].current = mission.goal;
+          joinedMissions.value[missionIndex].current = joinedMissions.value[missionIndex].goal;
           joinedMissions.value[missionIndex].completed = true;
           joinedMissions.value[missionIndex].inProgress = false;
           
-          // Show toast notification
+          // Update points awarded
           lastPointsAwarded.value = mission.reward_points;
+          
+          // IMPORTANT: Explicitly update the wallet with the earned points
+          await fetch(`http://localhost:5402/wallet/credit`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: userId.value,
+              points: mission.reward_points
+            })
+          });
+          
+          // Get the updated wallet balance
+          const walletResponse = await fetch(`http://localhost:5402/wallet/${userId.value}`);
+          if (walletResponse.ok) {
+            const walletData = await walletResponse.json();
+            
+            // IMPORTANT: Explicitly update the leaderboard with the total points
+            await fetch(`http://localhost:5404/leaderboard/update`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                user_id: userId.value,
+                total_points: walletData.total_points
+              })
+            });
+          }
+          
+          // Show toast notification
           showPointsToast.value = true;
           setTimeout(() => {
             showPointsToast.value = false;
           }, 3000);
           
-          // Refresh wallet and leaderboard data
+          // Refresh wallet data to get updated points
           await fetchWalletData();
+          
+          // Immediately refresh leaderboard to show updated points
           await fetchLeaderboardData();
           
           // Show points updated animation
@@ -657,6 +735,13 @@ const checkMissionUpdates = async () => {
           setTimeout(() => {
             pointsUpdated.value = false;
           }, 2000);
+          
+          // Show success popup
+          popupData.title = 'Mission Completed';
+          popupData.message = `Congratulations! You've completed the "${mission.name}" mission and earned ${mission.reward_points} points!`;
+          popupData.success = true;
+          popupData.buttonText = 'Claim Reward';
+          showPopup.value = true;
         }
       }
     }
@@ -798,7 +883,7 @@ const cleanupPolling = () => {
 
 // Initialize component
 onMounted(() => {
-  // Check if this is a fresh session
+  // Reset session data
   checkAndClearSession()
   
   // Fetch all data
@@ -1175,6 +1260,13 @@ button {
   font-size: 0.75rem;
   color: #777;
   margin-top: 0.5rem;
+}
+
+.mission-instruction {
+  font-size: 0.75rem;
+  color: #704116;
+  margin-top: 0.5rem;
+  font-style: italic;
 }
 
 /* Earn Points */
