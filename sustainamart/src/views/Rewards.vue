@@ -47,7 +47,11 @@
                 </div>
                 <h4 class="mission-title">{{ mission.name }}</h4>
                 <div class="progress-bar">
-                  <div class="progress-fill" :style="{ width: `${Math.min((mission.current / mission.goal) * 100, 100)}%` }"></div>
+                  <div 
+                    class="progress-fill" 
+                    :class="{ 'animate-progress': !showPopup }"
+                    :style="{ width: showPopup ? '0%' : `${Math.min((mission.current / mission.goal) * 100, 100)}%` }"
+                  ></div>
                 </div>
                 <p class="mission-date">{{ mission.inProgress ? 'In progress' : `Completed before ${mission.completionDate}` }}</p>
                 <p class="mission-instruction">{{ getMissionInstruction(mission.event_type) }}</p>
@@ -662,86 +666,96 @@ const checkMissionUpdates = async () => {
         
         if (missionIndex !== -1) {
           const mission = joinedMissions.value[missionIndex];
+
+          //Increment Progress
+          joinedMissions.value[missionIndex].current +=1;
+
+          //Check if mission is now complete
+          const isComplete = joinedMissions.value[missionIndex].current >= joinedMissions.value[missionIndex].goal;
           
-          // Call the API to complete the mission
-          const updateResponse = await fetch(`http://localhost:5403/mission/update`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              user_id: userId.value,
-              event_type: eventType
-            })
-          });
-          
-          if (!updateResponse.ok) {
-            console.error(`Failed to update mission: ${updateResponse.status}`);
-            continue;
-          }
-          
-          // Update the mission locally
-          joinedMissions.value[missionIndex].current = joinedMissions.value[missionIndex].goal;
-          joinedMissions.value[missionIndex].completed = true;
-          joinedMissions.value[missionIndex].inProgress = false;
-          
-          // Update points awarded
-          lastPointsAwarded.value = mission.reward_points;
-          
-          // IMPORTANT: Explicitly update the wallet with the earned points
-          await fetch(`http://localhost:5402/wallet/credit`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              user_id: userId.value,
-              points: mission.reward_points
-            })
-          });
-          
-          // Get the updated wallet balance
-          const walletResponse = await fetch(`http://localhost:5402/wallet/${userId.value}`);
-          if (walletResponse.ok) {
-            const walletData = await walletResponse.json();
-            
-            // IMPORTANT: Explicitly update the leaderboard with the total points
-            await fetch(`http://localhost:5404/leaderboard/update`, {
+          //Only mark as complete and aware points if actually complete
+          if(isComplete){
+
+            // Call the API to complete the mission
+            const updateResponse = await fetch(`http://localhost:5403/mission/update`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
                 user_id: userId.value,
-                total_points: walletData.total_points
+                event_type: eventType
               })
             });
+          
+            if (!updateResponse.ok) {
+              console.error(`Failed to update mission: ${updateResponse.status}`);
+              continue;
+            }
+          
+            // Update the mission locally
+            joinedMissions.value[missionIndex].current = joinedMissions.value[missionIndex].goal;
+            joinedMissions.value[missionIndex].completed = true;
+            joinedMissions.value[missionIndex].inProgress = false;
+            
+            // Update points awarded
+            lastPointsAwarded.value = mission.reward_points;
+            
+            // IMPORTANT: Explicitly update the wallet with the earned points
+            await fetch(`http://localhost:5402/wallet/credit`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                user_id: userId.value,
+                points: mission.reward_points
+              })
+            });
+          
+            // Get the updated wallet balance
+            const walletResponse = await fetch(`http://localhost:5402/wallet/${userId.value}`);
+            if (walletResponse.ok) {
+              const walletData = await walletResponse.json();
+              
+              // IMPORTANT: Explicitly update the leaderboard with the total points
+              await fetch(`http://localhost:5404/leaderboard/update`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  user_id: userId.value,
+                  total_points: walletData.total_points
+                })
+              });
+            }
+            
+            // Show toast notification
+            showPointsToast.value = true;
+            setTimeout(() => {
+              showPointsToast.value = false;
+            }, 3000);
+            
+            // Refresh wallet data to get updated points
+            await fetchWalletData();
+            
+            // Immediately refresh leaderboard to show updated points
+            await fetchLeaderboardData();
+            
+            // Show points updated animation
+            pointsUpdated.value = true;
+            setTimeout(() => {
+              pointsUpdated.value = false;
+            }, 2000);
+            
+            // Show success popup
+            popupData.title = 'Mission Completed';
+            popupData.message = `Congratulations! You've completed the "${mission.name}" mission and earned ${mission.reward_points} points!`;
+            popupData.success = true;
+            popupData.buttonText = 'Claim Reward';
+            showPopup.value = true;
           }
-          
-          // Show toast notification
-          showPointsToast.value = true;
-          setTimeout(() => {
-            showPointsToast.value = false;
-          }, 3000);
-          
-          // Refresh wallet data to get updated points
-          await fetchWalletData();
-          
-          // Immediately refresh leaderboard to show updated points
-          await fetchLeaderboardData();
-          
-          // Show points updated animation
-          pointsUpdated.value = true;
-          setTimeout(() => {
-            pointsUpdated.value = false;
-          }, 2000);
-          
-          // Show success popup
-          popupData.title = 'Mission Completed';
-          popupData.message = `Congratulations! You've completed the "${mission.name}" mission and earned ${mission.reward_points} points!`;
-          popupData.success = true;
-          popupData.buttonText = 'Claim Reward';
-          showPopup.value = true;
         }
       }
     }
@@ -852,6 +866,16 @@ const useVoucher = async (voucher) => {
 // Function to close popup
 const closePopup = () => {
   showPopup.value = false
+  
+  // Force a repaint to ensure the progress bars animate properly
+  setTimeout(() => {
+    const progressBars = document.querySelectorAll('.progress-fill');
+    progressBars.forEach(bar => {
+      bar.style.transition = 'none';
+      bar.offsetHeight; // Force repaint
+      bar.style.transition = 'width 2s ease-out';
+    });
+  }, 50);
 }
 
 // Set up polling for leaderboard, wallet data, and mission updates
@@ -1254,6 +1278,11 @@ button {
   height: 100%;
   background-color: #bb9d78;
   transition: width 0.5s ease-out;
+}
+
+/* Add animation class for progress bar */
+.animate-progress {
+  transition: width 2s ease-out;
 }
 
 .mission-date {
