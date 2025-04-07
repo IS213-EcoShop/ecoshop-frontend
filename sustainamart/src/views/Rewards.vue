@@ -262,8 +262,8 @@ const sortedLeaderboard = computed(() => {
 })
 
 // Vouchers data
-const availableVouchers = ref([])
-const userVouchers = ref([])
+const availableVouchers = reactive([])
+const userVouchers = reactive([])
 
 // Polling intervals
 const leaderboardInterval = ref(null)
@@ -344,7 +344,7 @@ const fetchLeaderboardData = async () => {
         id: user.user_id,
         username: user.username,
         total_points: user.total_points || 0,
-        isCurrentUser: user.id === userId.value
+        isCurrentUser: user.user_id === userId.value
       })
     })
     
@@ -364,11 +364,23 @@ const fetchAvailableVouchers = async () => {
     const response = await fetch('http://localhost:5406/voucher/templates')
     
     if (!response.ok) {
-      throw new Error(`Failed to fetch voucher templates: ${response.status}`)
+      throw new Error(`Failed to fetch voucher data: ${response.status}`)
     }
     
     const data = await response.json()
-    availableVouchers.value = data
+
+    availableVouchers.length = 0
+    
+    // Add new voucher data
+    data.forEach(item => {
+      availableVouchers.push({
+        id: item.id,
+        title: item.name,
+        points: item.points_cost,
+        amount: item.value,
+        description: item.description
+      })
+    })
     
     console.log('Voucher templates fetched successfully:', data)
     return data

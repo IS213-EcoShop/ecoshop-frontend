@@ -42,6 +42,15 @@
           <div v-else class="cart-items-container">
             <p class="cart-count">{{ cartItems.length }} item(s) in your cart</p>
             
+            <!-- Active Mission Banner (if applicable) -->
+            <div v-if="hasPurchaseMission" class="active-mission-banner">
+              <trophy-icon size="20" class="mission-icon" />
+              <div class="mission-info">
+                <h3>Active Mission</h3>
+                <p>Complete your purchase to earn points!</p>
+              </div>
+            </div>
+            
             <div class="cart-items">
               <div v-for="(item, index) in cartItems" :key="item.productId" class="cart-item">
                 <div class="product-col">
@@ -144,6 +153,7 @@
 </template>
 
 <script>
+
 export default {
   name: 'CartPage',
   data() {
@@ -165,7 +175,9 @@ export default {
       paymentId: null,
       checkoutSessionId: null,
       checkCount: 0,
-      maxCheckAttempts: 20
+      maxCheckAttempts: 20,
+      activeMissions: [],
+      hasPurchaseMission: false
     }
   },
   methods: {
@@ -276,33 +288,6 @@ export default {
         this.recommendations = [];
       } finally {
         this.loadingRecommendations = false;
-      }
-    },
-    
-    async updateCartItem(productId, quantity) {
-      this.isLoading = true;
-      
-      try {
-        // For now, we'll just update the local state
-        const index = this.cartItems.findIndex(item => item.productId === productId);
-        if (index !== -1) {
-          this.cartItems[index].quantity = quantity;
-          
-          // Here you would add the GraphQL mutation to update the cart on the server
-          // const mutation = `
-          //   mutation UpdateCartItem($userId: Int!, $productId: Int!, $quantity: Int!) {
-          //     updateCartItem(userId: $userId, productId: $productId, quantity: $quantity) {
-          //       success
-          //     }
-          //   }
-          // `;
-        }
-        
-      } catch (error) {
-        console.error('Error updating cart:', error);
-        this.error = error.message;
-      } finally {
-        this.isLoading = false;
       }
     },
     
@@ -467,7 +452,7 @@ export default {
     calculateSubtotal() {
       return this.cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
     },
-    
+
     async checkout() {
       if (this.isProcessingPayment) return;
       
@@ -478,8 +463,13 @@ export default {
       try {
         console.log("🔄 Initiating checkout...");
         
+        // Check if we need to update mission progress for purchase
+        if (this.hasPurchaseMission) {
+          await this.updateMissionProgress('purchase_product');
+        }
+        
         // Place order via microservice
-        const placeOrderResponse = await fetch(' http://127.0.0.1:8000/place_order', {
+        const placeOrderResponse = await fetch('http://127.0.0.1:8000/place_order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userID: this.userId })
@@ -708,10 +698,17 @@ export default {
       this.toastMessage = "Payment successful! Your order has been placed.";
       this.showToast = true;
       
-      // Reload the page to refresh the cart
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      // Redirect to rewards page if missions were completed
+      if (this.hasPurchaseMission) {
+        setTimeout(() => {
+          window.location.href = '/rewards?missionCompleted=true';
+        }, 2000);
+      } else {
+        // Just reload the page to refresh the cart
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
     },
     
     handlePaymentFailure(message) {
@@ -765,12 +762,65 @@ export default {
         this.cartItems[index].quantity -= 1;
         return false;
       }
+    },
+    
+    async fetchActiveMissions() {
+      try {
+        // Fetch user's active missions
+        const response = await fetch(`http://localhost:5403/mission/status/${this.userId}`);
+        
+        if (!response.ok) {
+          console.error('Failed to fetch missions:', response.status);
+          return;
+        }
+        
+        const missions = await response.json();
+        this.activeMissions = missions;
+        
+        // Check for purchase mission type
+        this.hasPurchaseMission = missions.some(
+          mission => mission.event_type === 'purchase_product' && 
+                    !mission.completed && 
+                    !mission.claimed
+        );
+      } catch (error) {
+        console.error('Error fetching active missions:', error);
+      }
+    },
+    
+    async updateMissionProgress(eventType) {
+      try {
+        // Call the mission update API
+        const response = await fetch(`http://localhost:5403/mission/update`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            user_id: this.userId,
+            event_type: eventType
+          })
+        });
+        
+        if (!response.ok) {
+          console.error(`Failed to update mission progress: ${response.status}`);
+          return false;
+        }
+        
+        console.log(`Mission progress updated for ${eventType}`);
+        return true;
+        
+      } catch (error) {
+        console.error('Error updating mission progress:', error);
+        return false;
+      }
     }
   },
   mounted() {
     // Fetch cart items and recommendations when the component is mounted
     this.fetchCartItems();
     this.fetchRecommendations();
+    this.fetchActiveMissions();
     
     // Check if we're returning from a payment (URL contains a session_id parameter)
     const urlParams = new URLSearchParams(window.location.search);
@@ -807,12 +857,12 @@ import {
   Trash as TrashIcon,
   ArrowLeft as ArrowLeftIcon,
   CreditCard as CreditCardIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Trophy as TrophyIcon
 } from 'lucide-vue-next'
 </script>
 
 <style scoped>
-/* Styles remain unchanged */
 /* Reset and Base Styles */
 * {
   margin: 0;
