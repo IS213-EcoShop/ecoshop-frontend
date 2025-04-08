@@ -53,7 +53,6 @@
                     :style="{ width: showPopup ? '0%' : `${Math.min((mission.current / mission.goal) * 100, 100)}%` }"
                   ></div>
                 </div>
-                <p class="mission-date">{{ mission.inProgress ? 'In progress' : `Completed before ${mission.completionDate}` }}</p>
                 <p class="mission-instruction">{{ getMissionInstruction(mission.event_type) }}</p>
               </div>
             </div>
@@ -96,7 +95,7 @@
                 <div class="leaderboard-user">
                   <div class="user-name">{{ user.username }} {{ user.isCurrentUser ? '(You)' : '' }}</div>
                 </div>
-                <div class="user-score" :class="{ 'points-updated': user.isCurrentUser && pointsUpdated }">{{ user.total_points }}</div>
+                <div class="user-score" :class="{ 'points-updated': user.isCurrentUser && pointsUpdated }">{{ user.points }}</div>
               </div>
             </div>
           </div>
@@ -106,7 +105,7 @@
             
             <div v-if="userPoints >= 500" class="redeem-points-grid">
               <div v-for="voucher in availableVouchers" :key="voucher.id" class="redeem-card">
-                <div class="voucher-amount">{{ voucher.amount }}</div>
+                <div class="voucher-amount">{{ voucher.description }}</div>
                 <div class="redeem-content">
                   <h4 class="redeem-title">{{ voucher.title }}</h4>
                   <p class="redeem-points">{{ voucher.points }} Points</p>
@@ -130,7 +129,7 @@
               <h4 class="vouchers-title">Your Vouchers</h4>
               <div class="user-vouchers-list">
                 <div v-for="voucher in userVouchers" :key="voucher.id" class="user-voucher-card">
-                  <div class="voucher-amount">{{ voucher.amount }}</div>
+                  <div class="voucher-amount">{{ voucher.description }}</div>
                   <div class="voucher-details">
                     <h5 class="voucher-title">{{ voucher.title }}</h5>
                     <p class="voucher-expiry">Expires: {{ voucher.expiryDate }}</p>
@@ -185,12 +184,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
-import { createClient } from '@supabase/supabase-js'
-import { 
-  User as UserIcon, 
-  Search as SearchIcon, 
-  Heart as HeartIcon, 
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue"
+import { createClient } from "@supabase/supabase-js"
+import {
+  User as UserIcon,
+  Search as SearchIcon,
+  Heart as HeartIcon,
   ShoppingCart as ShoppingCartIcon,
   ChevronRight as ChevronRightIcon,
   Trophy as TrophyIcon,
@@ -202,12 +201,13 @@ import {
   XCircle as XCircleIcon,
   Check as CheckIcon,
   CheckCircle as CheckCircleIcon,
-  AlertCircle as AlertCircleIcon
-} from 'lucide-vue-next'
+  AlertCircle as AlertCircleIcon,
+} from "lucide-vue-next"
 
 // Initialize Supabase client with provided credentials
-const supabaseUrl = 'https://cvtknyvnrxhaqdvdmlde.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2dGtueXZucnhoYXFkdmRtbGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5NDgyMzAsImV4cCI6MjA1NzUyNDIzMH0.cwPyRfbk5dwizQslRHTWzPGaRiiiDerVAMv_dwNDbUc'
+const supabaseUrl = "https://cvtknyvnrxhaqdvdmlde.supabase.co"
+const supabaseKey =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2dGtueXZucnhoYXFkdmRtbGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5NDgyMzAsImV4cCI6MjA1NzUyNDIzMH0.cwPyRfbk5dwizQslRHTWzPGaRiiiDerVAMv_dwNDbUc"
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 // User ID - In a real app, this would come from authentication
@@ -226,10 +226,10 @@ const lastPointsAwarded = ref(0)
 // Popup state
 const showPopup = ref(false)
 const popupData = reactive({
-  title: '',
-  message: '',
+  title: "",
+  message: "",
   success: true,
-  buttonText: 'OK'
+  buttonText: "OK",
 })
 
 // Voucher applied notification
@@ -244,21 +244,22 @@ const leaderboard = reactive([])
 
 // Check if this is a fresh session
 const isFirstLoad = ref(true)
+const appStartTime = ref(null)
 
 // Computed properties for filtered missions
 const currentMissions = computed(() => {
-  return joinedMissions.value.filter(mission => !mission.completed)
+  return joinedMissions.value.filter((mission) => !mission.completed)
 })
 
 const availableMissions = computed(() => {
   // Filter out missions that are already joined
-  const joinedMissionIds = joinedMissions.value.map(mission => mission.id)
-  return allMissions.filter(mission => !joinedMissionIds.includes(mission.id))
+  const joinedMissionIds = joinedMissions.value.map((mission) => mission.id)
+  return allMissions.filter((mission) => !joinedMissionIds.includes(mission.id))
 })
 
 // Computed property for sorted leaderboard (descending order by points)
 const sortedLeaderboard = computed(() => {
-  return [...leaderboard].sort((a, b) => b.total_points - a.total_points)
+  return [...leaderboard].sort((a, b) => b.points - a.points)
 })
 
 // Vouchers data
@@ -270,54 +271,73 @@ const leaderboardInterval = ref(null)
 const walletInterval = ref(null)
 const missionCheckInterval = ref(null)
 
+// Check for URL parameters indicating mission completion
+const checkUrlForMissionCompletion = () => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const missionCompleted = urlParams.get("missionCompleted")
+
+  if (missionCompleted === "true") {
+    // Clear the URL parameter without refreshing the page
+    const newUrl = window.location.pathname
+    window.history.replaceState({}, document.title, newUrl)
+
+    // Check for mission updates immediately
+    checkMissionUpdates()
+  }
+}
+
 // Function to check if this is a fresh session and clear missions if needed
 const checkAndClearSession = () => {
-  const lastSessionTime = sessionStorage.getItem('lastSessionTime')
-  const currentTime = new Date().getTime()
-  
-  if (!lastSessionTime || isFirstLoad.value) {
-    console.log('First load of the session, clearing joined missions')
-    joinedMissions.value = []
-    sessionStorage.setItem('lastSessionTime', currentTime)
-    sessionStorage.setItem('newSession', 'true')
+  // Get the app start time from localStorage
+  const storedAppStartTime = localStorage.getItem("appStartTime")
+
+  // If this is the first load after starting the app
+  if (!storedAppStartTime || isFirstLoad.value) {
+    console.log("First load of the application, setting app start time")
+
+    // Only clear joined missions if this is a new app start (npm run dev)
+    if (!storedAppStartTime) {
+      console.log("New app start detected, clearing joined missions")
+      joinedMissions.value = []
+
+      // Set the app start time
+      const currentTime = new Date().getTime()
+      appStartTime.value = currentTime
+      localStorage.setItem("appStartTime", currentTime.toString())
+    } else {
+      // If there's a stored app start time, use it
+      appStartTime.value = parseInt(storedAppStartTime)
+    }
+
+    // Mark that we've handled the first load
     isFirstLoad.value = false
-    return true
+    return !storedAppStartTime // Only return true if this is a new app start
   }
-  
+
   return false
 }
 
 // Function to fetch wallet data (user points and vouchers)
 const fetchWalletData = async () => {
   try {
-    // Check if this is a new session
-    const isNewSession = sessionStorage.getItem('newSession') === 'true';
-    
-    if (isNewSession) {
-      console.log('New session detected, resetting points to 0');
-      sessionStorage.setItem('newSession', 'false');
-      userPoints.value = 0;
-      return { points: 0, vouchers: [] };
-    }
-    
     const response = await fetch(`http://localhost:5402/wallet/${userId.value}`)
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch wallet data: ${response.status}`)
     }
-    
+
     const data = await response.json()
-    
+
     // Update user points
     userPoints.value = data.points || 0
-    
+
     // Update user vouchers
     userVouchers.value = data.vouchers || []
-    
-    console.log('Wallet data fetched successfully:', data)
+
+    console.log("Wallet data fetched successfully:", data)
     return data
   } catch (error) {
-    console.error('Error fetching wallet data:', error)
+    console.error("Error fetching wallet data:", error)
     // Don't set the error state here to avoid blocking the UI
     // if only the wallet fetch fails
     return null
@@ -327,31 +347,31 @@ const fetchWalletData = async () => {
 // Function to fetch leaderboard data
 const fetchLeaderboardData = async () => {
   try {
-    const response = await fetch('http://localhost:5404/leaderboard/top')
-    
+    const response = await fetch("http://localhost:5404/leaderboard/top")
+
     if (!response.ok) {
       throw new Error(`Failed to fetch leaderboard data: ${response.status}`)
     }
-    
+
     const data = await response.json()
-    
+
     // Clear existing leaderboard
     leaderboard.splice(0, leaderboard.length)
-    
+
     // Add new leaderboard data
-    data.forEach(user => {
+    data.forEach((user) => {
       leaderboard.push({
         id: user.user_id,
         username: user.username,
-        total_points: user.total_points || 0,
-        isCurrentUser: user.user_id === userId.value
+        points: user.total_points || 0,
+        isCurrentUser: user.user_id === userId.value,
       })
     })
-    
-    console.log('Leaderboard data fetched successfully:', data)
+
+    console.log("Leaderboard data fetched successfully:", data)
     return data
   } catch (error) {
-    console.error('Error fetching leaderboard data:', error)
+    console.error("Error fetching leaderboard data:", error)
     // Don't set the error state here to avoid blocking the UI
     // if only the leaderboard fetch fails
     return null
@@ -361,31 +381,31 @@ const fetchLeaderboardData = async () => {
 // Function to fetch available voucher templates
 const fetchAvailableVouchers = async () => {
   try {
-    const response = await fetch('http://localhost:5406/voucher/templates')
-    
+    const response = await fetch("http://localhost:5406/voucher/templates")
+
     if (!response.ok) {
       throw new Error(`Failed to fetch voucher data: ${response.status}`)
     }
-    
+
     const data = await response.json()
 
     availableVouchers.length = 0
-    
+
     // Add new voucher data
-    data.forEach(item => {
+    data.forEach((item) => {
       availableVouchers.push({
         id: item.id,
         title: item.name,
         points: item.points_cost,
         amount: item.value,
-        description: item.description
+        description: item.description,
       })
     })
-    
-    console.log('Voucher templates fetched successfully:', data)
+
+    console.log("Voucher templates fetched successfully:", data)
     return data
   } catch (error) {
-    console.error('Error fetching voucher templates:', error)
+    console.error("Error fetching voucher templates:", error)
     // Don't set the error state here to avoid blocking the UI
     // if only the vouchers fetch fails
     return null
@@ -394,37 +414,30 @@ const fetchAvailableVouchers = async () => {
 
 // Function to fetch joined missions
 const fetchJoinedMissions = async () => {
-  // If this is a fresh session, don't fetch joined missions
-  if (checkAndClearSession()) {
-    console.log('Fresh session, skipping joined missions fetch')
-    return []
-  }
-  
   try {
     const response = await fetch(`http://localhost:5403/mission/status/${userId.value}`)
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch joined missions: ${response.status}`)
     }
-    
+
     const data = await response.json()
 
     // Map the missions to ensure they have the correct properties
-    joinedMissions.value = data.map(mission => ({
+    joinedMissions.value = data.map((mission) => ({
       ...mission,
       // If these properties don't exist in your API response, add them
       current: mission.current || 0, // Set current progress to 0 if not provided
-      goal: mission.goal || 1,       // Set goal to 1 if not provided
+      goal: mission.goal || 1, // Set goal to 1 if not provided
       inProgress: mission.current < mission.goal, // Add inProgress flag
-      completed: mission.completed || false // Add completed flag
+      completed: mission.completed || false, // Add completed flag
     }))
-    
-    console.log('Joined missions fetched successfully:', joinedMissions.value)
+
+    console.log("Joined missions fetched successfully:", joinedMissions.value)
     return data
   } catch (error) {
-    console.error('Error fetching joined missions:', error)
+    console.error("Error fetching joined missions:", error)
     // Don't set the error state here to avoid blocking the UI
-    // if only the missions fetch fails
     return null
   }
 }
@@ -432,37 +445,34 @@ const fetchJoinedMissions = async () => {
 // Function to fetch available missions from Supabase
 const fetchAvailableMissions = async () => {
   try {
-    const { data, error: supabaseError } = await supabase
-      .from('mission')
-      .select('*')
-    
+    const { data, error: supabaseError } = await supabase.from("mission").select("*")
+
     if (supabaseError) {
       throw new Error(supabaseError.message)
     }
-    
+
     // Clear existing missions
     allMissions.splice(0, allMissions.length)
-    
+
     // Add new missions
     if (data && data.length > 0) {
-      data.forEach(mission => {
+      data.forEach((mission) => {
         allMissions.push({
           id: mission.id,
           name: mission.name,
           description: mission.description,
           reward_points: mission.reward_points || 100,
           goal: mission.goal || 1,
-          event_type: mission.event_type || null
+          event_type: mission.event_type || null,
         })
       })
     }
-    
-    console.log('Available missions fetched successfully:', data)
+
+    console.log("Available missions fetched successfully:", data)
     return data
   } catch (error) {
-    console.error('Error fetching available missions:', error)
+    console.error("Error fetching available missions:", error)
     // Don't set the error state here to avoid blocking the UI
-    // if only the available missions fetch fails
     return null
   }
 }
@@ -471,29 +481,33 @@ const fetchAvailableMissions = async () => {
 const fetchAllData = async () => {
   isLoading.value = true
   error.value = null
-  
+
   try {
-    // Clear joined missions on page load/refresh
-    joinedMissions.value = []
-    
+    // Check if we need to fetch joined missions
+    const shouldClearMissions = checkAndClearSession()
+
     // Fetch all data in parallel
     const results = await Promise.all([
       fetchWalletData(),
       fetchLeaderboardData(),
       fetchAvailableVouchers(),
-      fetchAvailableMissions()
+      fetchAvailableMissions(),
     ])
-    
-    // Check if any of the fetches failed
-    const anyFailed = results.some(result => result === null)
-    
-    if (anyFailed) {
-      console.warn('Some data fetches failed, but continuing with available data')
+
+    // Only fetch joined missions if we're not clearing them
+    if (!shouldClearMissions) {
+      await fetchJoinedMissions()
     }
-    
+
+    // Check if any of the fetches failed
+    const anyFailed = results.some((result) => result === null)
+
+    if (anyFailed) {
+      console.warn("Some data fetches failed, but continuing with available data")
+    }
   } catch (err) {
-    error.value = err.message || 'Failed to load data'
-    console.error('Error fetching all data:', err)
+    error.value = err.message || "Failed to load data"
+    console.error("Error fetching all data:", err)
   } finally {
     isLoading.value = false
   }
@@ -502,18 +516,19 @@ const fetchAllData = async () => {
 // Add a helper function to get mission instructions
 const getMissionInstruction = (eventType) => {
   switch (eventType) {
-    case 'purchase_eco_product':
-      return 'To complete: Purchase an eco-friendly product and proceed to checkout';
-    case 'recycle_item':
-      return 'To complete: Recycle an item at a collection point';
-    case 'reduce_carbon':
-      return 'To complete: Use eco-friendly shipping option at checkout';
-    case 'trade_in':
-      return 'To complete: Trade in an old item on the Trade-In page';
-    case 'checkout_completed':
-      return 'To complete: Finish a purchase by proceeding to checkout';
+    case "purchase_eco_product":
+      return "To complete: Purchase an eco-friendly product and proceed to checkout"
+    case "recycle_item":
+      return "To complete: Recycle an item at a collection point"
+    case "reduce_carbon":
+      return "To complete: Use eco-friendly shipping option at checkout"
+    case "trade_in":
+      return "To complete: Trade in an old item on the Trade-In page"
+    case "checkout_completed":
+    case "purchase_product":
+      return "To complete: Finish a purchase by proceeding to checkout"
     default:
-      return 'To complete: Follow the mission requirements';
+      return "To complete: Follow the mission requirements"
   }
 }
 
@@ -521,21 +536,21 @@ const getMissionInstruction = (eventType) => {
 const joinMission = async (mission) => {
   try {
     // Call the API to join the mission
-    const response = await fetch('http://localhost:5403/mission/join', {
-      method: 'POST',
+    const response = await fetch("http://localhost:5403/mission/join", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         user_id: userId.value,
-        mission_id: mission.id
-      })
+        mission_id: mission.id,
+      }),
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to join mission: ${response.status}`)
     }
-    
+
     // Add the mission to joined missions immediately for better UX
     const newMission = {
       id: mission.id,
@@ -546,26 +561,25 @@ const joinMission = async (mission) => {
       current: 0,
       inProgress: true,
       completed: false,
-      event_type: mission.event_type
+      event_type: mission.event_type,
     }
-    
+
     joinedMissions.value.push(newMission)
-    
+
     // Show popup with specific instructions
-    popupData.title = 'Mission Joined';
-    popupData.message = `You've joined the "${mission.name}" mission. ${getMissionInstruction(mission.event_type)}`;
-    popupData.success = true;
-    popupData.buttonText = 'Got it!';
-    showPopup.value = true;
-    
+    popupData.title = "Mission Joined"
+    popupData.message = `You've joined the "${mission.name}" mission. ${getMissionInstruction(mission.event_type)}`
+    popupData.success = true
+    popupData.buttonText = "Got it!"
+    showPopup.value = true
   } catch (error) {
-    console.error('Error joining mission:', error)
-    
+    console.error("Error joining mission:", error)
+
     // Show error popup
-    popupData.title = 'Error'
-    popupData.message = 'Failed to join mission. Please try again later.'
+    popupData.title = "Error"
+    popupData.message = "Failed to join mission. Please try again later."
     popupData.success = false
-    popupData.buttonText = 'OK'
+    popupData.buttonText = "OK"
     showPopup.value = true
   }
 }
@@ -575,66 +589,65 @@ const completeMission = async (mission) => {
   try {
     // Call the API to complete the mission
     const response = await fetch(`http://localhost:5403/mission/update`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         user_id: userId.value,
-        event_type: mission.event_type || 'manual_complete'
-      })
+        event_type: mission.event_type || "manual_complete",
+      }),
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to complete mission: ${response.status}`)
     }
-    
+
     const data = await response.json()
-    
+
     // Update points awarded
     lastPointsAwarded.value = mission.reward_points
-    
+
     // Mark the mission as completed in the local state
-    const missionIndex = joinedMissions.value.findIndex(m => m.id === mission.id)
+    const missionIndex = joinedMissions.value.findIndex((m) => m.id === mission.id)
     if (missionIndex !== -1) {
       joinedMissions.value[missionIndex].completed = true
       joinedMissions.value[missionIndex].current = joinedMissions.value[missionIndex].goal
       joinedMissions.value[missionIndex].inProgress = false
     }
-    
+
     // Refresh wallet data to get updated points
     await fetchWalletData()
-    
+
     // Refresh leaderboard
     await fetchLeaderboardData()
-    
+
     // Show points updated animation
     pointsUpdated.value = true
     setTimeout(() => {
       pointsUpdated.value = false
     }, 2000)
-    
+
     // Show toast notification
     showPointsToast.value = true
     setTimeout(() => {
       showPointsToast.value = false
     }, 3000)
-    
+
     // Show success popup
-    popupData.title = 'Mission Completed'
+    popupData.title = "Mission Completed"
     popupData.message = `Congratulations! You've completed the "${mission.name}" mission and earned ${mission.reward_points} points!`
     popupData.success = true
-    popupData.buttonText = 'Claim Reward'
+    popupData.buttonText = "Claim Reward"
     showPopup.value = true
-    
   } catch (error) {
-    console.error('Error completing mission:', error)
-    
+    console.error("Error completing mission:", error)
+
     // Show error popup
-    popupData.title = 'Error'
-    popupData.message = 'Failed to complete mission. Please try again later.'
+    popupData.title = "Error"
+    popupData.message = "Failed to complete mission. Please try again later."
     popupData.success = false
-    popupData.buttonText = 'OK'
+    popupData.buttonText = "OK"
     showPopup.value = true
   }
 }
@@ -643,136 +656,152 @@ const completeMission = async (mission) => {
 const checkMissionUpdates = async () => {
   try {
     // Only check if there are active missions
-    if (joinedMissions.value.length === 0) return;
-    
+    if (joinedMissions.value.length === 0) {
+      // If we don't have any joined missions yet, fetch them
+      await fetchJoinedMissions()
+      if (joinedMissions.value.length === 0) return
+    }
+
     // Get all event types from active missions
     const eventTypes = joinedMissions.value
-      .filter(mission => !mission.completed && mission.event_type)
-      .map(mission => mission.event_type);
-    
-    if (eventTypes.length === 0) return;
-    
+      .filter((mission) => !mission.completed && mission.event_type)
+      .map((mission) => mission.event_type)
+
+    if (eventTypes.length === 0) return
+
     // Check each event type
     for (const eventType of eventTypes) {
-      // Only check for mission updates if we're on the right page for the event type
-      // This prevents missions from being completed automatically
-      if (eventType === 'purchase_eco_product' && !window.location.pathname.includes('/cart')) {
-        continue; // Skip checking for eco product purchases unless we're on the cart page
+      // Check for purchase_product or checkout_completed events regardless of page
+      // This allows missions to be completed after checkout from any page
+      const isPurchaseEvent = eventType === "purchase_product" || eventType === "checkout_completed"
+
+      // For other event types, only check if we're on the right page
+      if (!isPurchaseEvent) {
+        if (eventType === "purchase_eco_product" && !window.location.pathname.includes("/cart")) {
+          continue // Skip checking for eco product purchases unless we're on the cart page
+        }
+
+        if (eventType === "trade_in" && !window.location.pathname.includes("/trade-in")) {
+          continue // Skip checking for trade-ins unless we're on the trade-in page
+        }
       }
-      
-      if (eventType === 'trade_in' && !window.location.pathname.includes('/trade-in')) {
-        continue; // Skip checking for trade-ins unless we're on the trade-in page
-      }
-      
-      const response = await fetch(`http://localhost:5403/mission/check/${userId.value}/${eventType}`);
-      
-      if (!response.ok) continue;
-      
-      const data = await response.json();
-      
+
+      const response = await fetch(`http://localhost:5403/mission/check/${userId.value}/${eventType}`)
+
+      if (!response.ok) continue
+
+      const data = await response.json()
+
       if (data.should_update) {
         // Find the mission that was updated
-        const missionIndex = joinedMissions.value.findIndex(
-          m => m.event_type === eventType && !m.completed
-        );
-        
+        const missionIndex = joinedMissions.value.findIndex((m) => m.event_type === eventType && !m.completed)
+
         if (missionIndex !== -1) {
-          const mission = joinedMissions.value[missionIndex];
+          const mission = joinedMissions.value[missionIndex]
 
           //Increment Progress
-          joinedMissions.value[missionIndex].current +=1;
+          joinedMissions.value[missionIndex].current += 1
 
           //Check if mission is now complete
-          const isComplete = joinedMissions.value[missionIndex].current >= joinedMissions.value[missionIndex].goal;
-          
-          //Only mark as complete and aware points if actually complete
-          if(isComplete){
+          const isComplete = joinedMissions.value[missionIndex].current >= joinedMissions.value[missionIndex].goal
 
+          //Only mark as complete and award points if actually complete
+          if (isComplete) {
             // Call the API to complete the mission
             const updateResponse = await fetch(`http://localhost:5403/mission/update`, {
-              method: 'POST',
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json'
+                "Content-Type": "application/json",
               },
               body: JSON.stringify({
                 user_id: userId.value,
-                event_type: eventType
-              })
-            });
-          
+                event_type: eventType,
+              }),
+            })
+
             if (!updateResponse.ok) {
-              console.error(`Failed to update mission: ${updateResponse.status}`);
-              continue;
+              console.error(`Failed to update mission: ${updateResponse.status}`)
+              continue
             }
-          
+
             // Update the mission locally
-            joinedMissions.value[missionIndex].current = joinedMissions.value[missionIndex].goal;
-            joinedMissions.value[missionIndex].completed = true;
-            joinedMissions.value[missionIndex].inProgress = false;
-            
+            joinedMissions.value[missionIndex].current = joinedMissions.value[missionIndex].goal
+            joinedMissions.value[missionIndex].completed = true
+            joinedMissions.value[missionIndex].inProgress = false
+
             // Update points awarded
-            lastPointsAwarded.value = mission.reward_points;
-            
+            lastPointsAwarded.value = mission.reward_points
+
             // IMPORTANT: Explicitly update the wallet with the earned points
-            await fetch(`http://localhost:5402/wallet/credit`, {
-              method: 'POST',
+            const creditResponse = await fetch(`http://localhost:5402/wallet/credit`, {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json'
+                "Content-Type": "application/json",
               },
               body: JSON.stringify({
                 user_id: userId.value,
-                points: mission.reward_points
-              })
-            });
-          
+                points: mission.reward_points,
+              }),
+            })
+
+            if (!creditResponse.ok) {
+              console.error(`Failed to credit wallet: ${creditResponse.status}`)
+              continue
+            }
+
             // Get the updated wallet balance
-            const walletResponse = await fetch(`http://localhost:5402/wallet/${userId.value}`);
+            const walletResponse = await fetch(`http://localhost:5402/wallet/${userId.value}`)
             if (walletResponse.ok) {
-              const walletData = await walletResponse.json();
-              
+              const walletData = await walletResponse.json()
+
               // IMPORTANT: Explicitly update the leaderboard with the total points
-              await fetch(`http://localhost:5404/leaderboard/update`, {
-                method: 'POST',
+              // Use the points from the wallet to ensure consistency
+              const leaderboardResponse = await fetch(`http://localhost:5404/leaderboard/update`, {
+                method: "POST",
                 headers: {
-                  'Content-Type': 'application/json'
+                  "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
                   user_id: userId.value,
-                  total_points: walletData.total_points
-                })
-              });
+                  total_points: walletData.points || 0,
+                }),
+              })
+
+              if (!leaderboardResponse.ok) {
+                console.error(`Failed to update leaderboard: ${leaderboardResponse.status}`)
+              }
             }
-            
+
             // Show toast notification
-            showPointsToast.value = true;
+            showPointsToast.value = true
             setTimeout(() => {
-              showPointsToast.value = false;
-            }, 3000);
-            
+              showPointsToast.value = false
+            }, 3000)
+
             // Refresh wallet data to get updated points
-            await fetchWalletData();
-            
+            await fetchWalletData()
+
             // Immediately refresh leaderboard to show updated points
-            await fetchLeaderboardData();
-            
+            await fetchLeaderboardData()
+
             // Show points updated animation
-            pointsUpdated.value = true;
+            pointsUpdated.value = true
             setTimeout(() => {
-              pointsUpdated.value = false;
-            }, 2000);
-            
+              pointsUpdated.value = false
+            }, 2000)
+
             // Show success popup
-            popupData.title = 'Mission Completed';
-            popupData.message = `Congratulations! You've completed the "${mission.name}" mission and earned ${mission.reward_points} points!`;
-            popupData.success = true;
-            popupData.buttonText = 'Claim Reward';
-            showPopup.value = true;
+            popupData.title = "Mission Completed"
+            popupData.message = `Congratulations! You've completed the "${mission.name}" mission and earned ${mission.reward_points} points!`
+            popupData.success = true
+            popupData.buttonText = "Claim Reward"
+            showPopup.value = true
           }
         }
       }
     }
   } catch (error) {
-    console.error('Error checking mission updates:', error);
+    console.error("Error checking mission updates:", error)
   }
 }
 
@@ -782,52 +811,51 @@ const redeemVoucher = async (voucher) => {
     // Check if user has enough points
     if (userPoints.value < voucher.points) {
       // Show error popup
-      popupData.title = 'Insufficient Points'
+      popupData.title = "Insufficient Points"
       popupData.message = `You need ${voucher.points} points to redeem this voucher. You currently have ${userPoints.value} points.`
       popupData.success = false
-      popupData.buttonText = 'OK'
+      popupData.buttonText = "OK"
       showPopup.value = true
       return
     }
-    
+
     // Call the API to redeem the voucher
-    const response = await fetch(`http://localhost:5402/wallet/redeem`, {
-      method: 'POST',
+    const response = await fetch(`http://localhost:5406/voucher/claim`, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         user_id: userId.value,
         voucher_id: voucher.id,
-        points: voucher.points
-      })
+        points: voucher.points,
+      }),
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to redeem voucher: ${response.status}`)
     }
-    
+
     // Refresh wallet data to get updated points and vouchers
     await fetchWalletData()
-    
+
     // Refresh leaderboard
     await fetchLeaderboardData()
-    
+
     // Show success popup
-    popupData.title = 'Voucher Redeemed'
-    popupData.message = `You've successfully redeemed a ${voucher.amount} voucher! It has been added to your vouchers and is available in your cart.`
+    popupData.title = "Voucher Redeemed"
+    popupData.message = `You've successfully redeemed a $${voucher.amount} voucher! It has been added to your vouchers and is available in your cart.`
     popupData.success = true
-    popupData.buttonText = 'OK'
+    popupData.buttonText = "OK"
     showPopup.value = true
-    
   } catch (error) {
-    console.error('Error redeeming voucher:', error)
-    
+    console.error("Error redeeming voucher:", error)
+
     // Show error popup
-    popupData.title = 'Error'
-    popupData.message = 'Failed to redeem voucher. Please try again later.'
+    popupData.title = "Error"
+    popupData.message = "Failed to redeem voucher. Please try again later."
     popupData.success = false
-    popupData.buttonText = 'OK'
+    popupData.buttonText = "OK"
     showPopup.value = true
   }
 }
@@ -837,40 +865,39 @@ const useVoucher = async (voucher) => {
   try {
     // Call the API to use the voucher
     const response = await fetch(`http://localhost:5402/wallet/use-voucher`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         user_id: userId.value,
-        voucher_id: voucher.id
-      })
+        voucher_id: voucher.id,
+      }),
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to use voucher: ${response.status}`)
     }
-    
+
     // Show voucher applied notification
     showVoucherApplied.value = true
     setTimeout(() => {
       showVoucherApplied.value = false
-      
+
       // Refresh wallet data to get updated vouchers
       fetchWalletData()
-      
+
       // Redirect to cart page
-      window.location.href = '/cart'
+      window.location.href = "/cart"
     }, 2000)
-    
   } catch (error) {
-    console.error('Error using voucher:', error)
-    
+    console.error("Error using voucher:", error)
+
     // Show error popup
-    popupData.title = 'Error'
-    popupData.message = 'Failed to use voucher. Please try again later.'
+    popupData.title = "Error"
+    popupData.message = "Failed to use voucher. Please try again later."
     popupData.success = false
-    popupData.buttonText = 'OK'
+    popupData.buttonText = "OK"
     showPopup.value = true
   }
 }
@@ -878,26 +905,26 @@ const useVoucher = async (voucher) => {
 // Function to close popup
 const closePopup = () => {
   showPopup.value = false
-  
+
   // Force a repaint to ensure the progress bars animate properly
   setTimeout(() => {
-    const progressBars = document.querySelectorAll('.progress-fill');
-    progressBars.forEach(bar => {
-      bar.style.transition = 'none';
-      bar.offsetHeight; // Force repaint
-      bar.style.transition = 'width 2s ease-out';
-    });
-  }, 50);
+    const progressBars = document.querySelectorAll(".progress-fill")
+    progressBars.forEach((bar) => {
+      bar.style.transition = "none"
+      bar.offsetHeight // Force repaint
+      bar.style.transition = "width 2s ease-out"
+    })
+  }, 50)
 }
 
 // Set up polling for leaderboard, wallet data, and mission updates
 const setupPolling = () => {
   // Poll leaderboard every 30 seconds
   leaderboardInterval.value = setInterval(fetchLeaderboardData, 30000)
-  
+
   // Poll wallet data every 60 seconds
   walletInterval.value = setInterval(fetchWalletData, 60000)
-  
+
   // Check for mission updates every 5 seconds
   missionCheckInterval.value = setInterval(checkMissionUpdates, 5000)
 }
@@ -907,11 +934,11 @@ const cleanupPolling = () => {
   if (leaderboardInterval.value) {
     clearInterval(leaderboardInterval.value)
   }
-  
+
   if (walletInterval.value) {
     clearInterval(walletInterval.value)
   }
-  
+
   if (missionCheckInterval.value) {
     clearInterval(missionCheckInterval.value)
   }
@@ -919,15 +946,15 @@ const cleanupPolling = () => {
 
 // Initialize component
 onMounted(() => {
-  // Reset session data
-  checkAndClearSession()
-  
+  // Check for URL parameters indicating mission completion
+  checkUrlForMissionCompletion()
+
   // Fetch all data
   fetchAllData()
-  
+
   // Set up polling
   setupPolling()
-  
+
   // Start checking for mission updates
   checkMissionUpdates()
 })
