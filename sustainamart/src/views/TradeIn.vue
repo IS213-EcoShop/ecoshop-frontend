@@ -483,7 +483,7 @@ const tradeIns = ref([
     condition: "good",
     status: "Pending",
     submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-    image: "public/bamboo.png",
+    image: "/bamboo.png",
   },
   {
     id: 2,
@@ -491,7 +491,7 @@ const tradeIns = ref([
     condition: "excellent",
     status: "Accepted",
     submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-    image: "public/sofa.png",
+    image: "/sofa.png",
   },
   {
     id: 3,
@@ -499,7 +499,7 @@ const tradeIns = ref([
     condition: "fair",
     status: "Rejected",
     submittedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
-    image: "public/shirt.png",
+    image: "/shirt.png",
   },
 ])
 
