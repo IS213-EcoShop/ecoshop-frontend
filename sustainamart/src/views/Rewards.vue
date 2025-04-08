@@ -456,7 +456,7 @@ const fetchLeaderboardData = async () => {
     if (!currentUserFound) {
       leaderboard.push({
         id: userId.value,
-        username: "You",
+        username: "user",
         points: userPoints.value,
         isCurrentUser: true,
       })
@@ -931,7 +931,7 @@ const redeemVoucher = async (voucher) => {
 
     // Show success popup
     popupData.title = "Voucher Redeemed"
-    popupData.message = `You've successfully redeemed a ${voucher.amount} voucher! It has been added to your vouchers and is available in your cart.`
+    popupData.message = `You've successfully redeemed a $${voucher.amount} voucher! It has been added to your vouchers and is available in your cart.`
     popupData.success = true
     popupData.buttonText = "OK"
     showPopup.value = true
