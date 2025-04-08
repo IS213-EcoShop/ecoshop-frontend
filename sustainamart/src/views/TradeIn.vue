@@ -1,5 +1,4 @@
-```vue type="vue" project="Trade-In Service" file="trade-in-page.vue"
-[v0-no-op-code-block-prefix]<template>
+<template>
   <div class="trade-in-page">
     <!-- Updated hero section with blurred background -->
     <div class="hero-section">
@@ -224,7 +223,7 @@
                     <span class="value">{{ item.condition }}</span>
                   </div>
     
-                  <div v-if="item.status === 'Accepted'" class="detail-row points-row">
+                  <div v-if="item.status === 'Accepted' || item.status === 'accepted'" class="detail-row points-row">
                     <span class="label">Reward:</span>
                     <span class="points-badge beige-box value">
                       <TrophyIcon size="16" />
@@ -245,7 +244,7 @@
                 </button>
                 
                 <button 
-                  v-if="item.status === 'Accepted'" 
+                  v-if="item.status === 'Accepted' || item.status === 'accepted'"
                   class="action-btn beige-box"
                   @click="claimRewardPoints(item, index)"
                 >
