@@ -199,7 +199,7 @@
           <div v-else class="trade-in-list">
             <div v-for="(item, index) in tradeIns" :key="item.id" class="trade-in-card">
               <div class="card-header">
-                <h4>{{ item.productName }}</h4>
+                <h4>{{ item.product_name }}</h4>
                 <div class="status-badge" :class="getStatusClass(item.status)">
                   <span v-if="item.status === 'Pending'" class="status-icon"><ClockIcon size="14" /></span>
                   <span v-else-if="item.status === 'Accepted'" class="status-icon"><CheckIcon size="14" /></span>
@@ -211,12 +211,12 @@
               
               <div class="card-content">
                 <div class="product-image">
-                  <img :src="item.image" alt="Product image">
+                  <img :src="item.image_url" alt="Product image">
                 </div>
                 <div class="product-details">
                   <div class="detail-row">
                     <span class="label">Submitted:</span>
-                    <span class="value">{{ formatDate(item.submittedDate) }}</span>
+                    <span class="value">{{ formatDate(item.created_at) }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="label">Condition:</span>
@@ -229,14 +229,9 @@
                       20 Points
                     </span>
                   </div>
-                  <!-- Removed the Offered Value row for Asgaard Sofa -->
-                  <div v-if="item.status === 'Accepted' && item.productName !== 'Asgaard Sofa' && item.offeredValue" class="detail-row">
-                    <span class="label">Offered Value:</span>
-                    <span class="value-badge value">Rs. {{ item.offeredValue.toLocaleString() }}</span>
-                  </div>
                   <div v-if="item.status === 'Claimed'" class="detail-row claimed-row">
                     <span class="label">Claimed:</span>
-                    <span class="value">{{ formatDate(item.claimedDate) }}</span>
+                    <span class="value">{{ formatDate(item.claimed_at || item.created_at) }}</span>
                   </div>
                 </div>
               </div>
@@ -398,7 +393,7 @@
           </div>
           
           <div class="centered-button">
-            <button class="cancel-confirm-btn" @click="cancelRequest">Yes, Cancel Request</button>
+            <button class="cancel-confirm-btn" @click="showCancelConfirmation = false">Yes, Cancel Request</button>
             <button class="cancel-decline-btn" @click="showCancelConfirmation = false">No, Keep Request</button>
           </div>
         </div>
@@ -475,33 +470,8 @@ const showAcceptedDetails = ref(false);
 // Form validation
 const phoneError = ref(false);
 
-// Mock trade-in history data
-const tradeIns = ref([
-  {
-    id: 1,
-    productName: "Eco-friendly Bamboo Chair",
-    condition: "Good",
-    status: "Pending",
-    submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-    image: "/bamboo.png",
-  },
-  {
-    id: 2,
-    productName: "Asgaard Sofa",
-    condition: "Excellent",
-    status: "Accepted",
-    submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-    image: "/sofa.png",
-  },
-  {
-    id: 3,
-    productName: "Recycled Cotton T-shirt",
-    condition: "Fair",
-    status: "Rejected",
-    submittedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
-    image: "/shirt.png",
-  },
-])
+// Trade-in history data
+const tradeIns = ref([]);
 
 const validatePhoneNumber = () => {
   // Remove any non-numeric characters
@@ -544,8 +514,16 @@ const loadTradeInHistory = async () => {
   error.value = null;
 
   try {
-    // Skip API call; just use mock data already in tradeIns
-    console.log('Using mock trade-in history data:', tradeIns.value);
+    // Call the API to get trade-in history
+    const response = await fetch(`http://localhost:5400/trade-in/${userId.value}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to load trade-in history: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    tradeIns.value = data;
+    console.log('Trade-in history loaded:', tradeIns.value);
   } catch (err) {
     error.value = err.message || 'Failed to load trade-in history';
     console.error('Error loading trade-in history:', err);
@@ -577,6 +555,7 @@ const submitTradeIn = async () => {
     // Add form fields required by the microservice
     formData.append("user_id", userId.value)
     formData.append("product_name", form.productName)
+    formData.append("condition", form.condition)  // Add this line to include the condition
 
     // Add the first image (the microservice only accepts one image)
     if (uploadedFiles.value.length > 0) {
@@ -600,11 +579,11 @@ const submitTradeIn = async () => {
     // Add the new trade-in to the history
     const newTradeIn = {
       id: data.trade_id || Date.now(), // Use the ID from the API or generate a timestamp
-      productName: form.productName,
+      product_name: form.productName,
       condition: form.condition,
       status: "Pending",
-      submittedDate: new Date(),
-      image: data.image_url || imagePreviewUrls.value[0], // Use the image URL from the API or the preview
+      created_at: new Date().toISOString(),
+      image_url: data.image_url || imagePreviewUrls.value[0], // Use the image URL from the API or the preview
     }
     
     // Add to the beginning of the array to show the newest first
@@ -673,34 +652,29 @@ const claimRewardPoints = async (item, index) => {
       console.log('Leaderboard updated successfully');
     }
     
-    // Only try to update the trade-in status if it's not a mock item
-    if (item.productName !== "Asgaard Sofa") {
-      try {
-        const updateResponse = await fetch(`http://localhost:5400/trade-in/status/${item.id}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            trade_in_id: item.id,
-            status: 'Claimed'
-          })
-        });
-        
-        if (!updateResponse.ok) {
-          console.warn(`Failed to update trade-in status in backend, but points were credited: ${updateResponse.status}`);
-        }
-      } catch (statusError) {
-        console.warn('Error updating trade-in status, but points were credited:', statusError);
+    // Update the trade-in status
+    try {
+      const updateResponse = await fetch(`http://localhost:5400/trade-in/status/${item.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          trade_in_id: item.id,
+          status: 'Claimed'
+        })
+      });
+      
+      if (!updateResponse.ok) {
+        console.warn(`Failed to update trade-in status in backend, but points were credited: ${updateResponse.status}`);
       }
-    } else {
-      console.log('Skipping trade-in status update for mock item:', item.productName);
+    } catch (statusError) {
+      console.warn('Error updating trade-in status, but points were credited:', statusError);
     }
     
-    // Update the local state to reflect the claimed status regardless of backend status
-    console.log('Updating item status to Claimed:', item.productName);
+    // Update the local state to reflect the claimed status
     tradeIns.value[index].status = "Claimed";
-    tradeIns.value[index].claimedDate = new Date();
+    tradeIns.value[index].claimed_at = new Date().toISOString();
     console.log('Updated trade-in status in UI:', tradeIns.value[index]);
     
     // Show notification
@@ -730,6 +704,7 @@ const confirmCancelRequest = (index) => {
 
 // Helper functions
 const formatDate = (date) => {
+  if (!date) return 'N/A';
   return new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
