@@ -219,10 +219,6 @@
                     <span class="value">{{ formatDate(item.submittedDate) }}</span>
                   </div>
                   <div class="detail-row">
-                    <span class="label">Category:</span>
-                    <span class="value">{{ item.category }}</span>
-                  </div>
-                  <div class="detail-row">
                     <span class="label">Condition:</span>
                     <span class="value">{{ item.condition }}</span>
                   </div>
@@ -230,7 +226,7 @@
                     <span class="label">Reward:</span>
                     <span class="points-badge beige-box value">
                       <TrophyIcon size="16" />
-                      20 Sustainability Points
+                      20 Points
                     </span>
                   </div>
                   <!-- Removed the Offered Value row for Asgaard Sofa -->
@@ -456,11 +452,11 @@ const isSubmitting = ref(false);
 const form = reactive({
   fullName: 'Charlie Yeo',
   email: 'charlieyeo00@gmail.com',
-  phone: '9484 3940',
+  phone: '94843940',
   address: 'Toh Guan Rd Blk 394 #05-12',
-  productName: '',
-  description: '',
-  condition: ''
+  productName: 'shirt',
+  description: 'pantagonia shirt',
+  condition: 'good'
 });
 
 // Image upload handling
@@ -479,19 +475,44 @@ const showAcceptedDetails = ref(false);
 // Form validation
 const phoneError = ref(false);
 
-// Trade-in history
-const tradeIns = ref([]);
+// Mock trade-in history data
+const tradeIns = ref([
+  {
+    id: 1,
+    productName: "Eco-friendly Bamboo Chair",
+    condition: "good",
+    status: "Pending",
+    submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+    image: "public/bamboo.png",
+  },
+  {
+    id: 2,
+    productName: "Asgaard Sofa",
+    condition: "excellent",
+    status: "Accepted",
+    submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+    image: "public/sofa.png",
+  },
+  {
+    id: 3,
+    productName: "Recycled Cotton T-shirt",
+    condition: "fair",
+    status: "Rejected",
+    submittedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
+    image: "public/shirt.png",
+  },
+])
 
 const validatePhoneNumber = () => {
   // Remove any non-numeric characters
   form.phone = form.phone.replace(/\D/g, '');
   
   // Check if the phone number is valid (8 digits)
-  phoneError.value = form.phone.length > 0 && form.phone.length !== 8;
-};
+  phoneError.value = form.phone.length > 0 && form.phone.length !== 8
+}
 
 const triggerFileInput = () => {
-  fileInput.value.click();
+  fileInput.value.click()
 };
 
 const handleFileUpload = (event) => {
@@ -513,29 +534,21 @@ const handleFileUpload = (event) => {
 };
 
 const removeImage = (index) => {
-  imagePreviewUrls.value.splice(index, 1);
-  uploadedFiles.value.splice(index, 1);
-};
+  imagePreviewUrls.value.splice(index, 1)
+  uploadedFiles.value.splice(index, 1)
+}
 
 // Function to load trade-in history
 const loadTradeInHistory = async () => {
   isLoading.value = true;
   error.value = null;
-  
+
   try {
-    const response = await fetch(`http://localhost:5400/trade-in`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch trade-in history: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    tradeIns.value = data;
-    
-    console.log('Trade-in history fetched successfully:', data);
+    // Skip API call; just use mock data already in tradeIns
+    console.log('Using mock trade-in history data:', tradeIns.value);
   } catch (err) {
     error.value = err.message || 'Failed to load trade-in history';
-    console.error('Error fetching trade-in history:', err);
+    console.error('Error loading trade-in history:', err);
   } finally {
     isLoading.value = false;
   }
@@ -559,29 +572,22 @@ const submitTradeIn = async () => {
   isSubmitting.value = true;
   
   try {
-    // Create FormData object for multipart form upload
-    const formData = new FormData();
+    const formData = new FormData()
+
+    // Add form fields required by the microservice
+    formData.append("user_id", userId.value)
+    formData.append("product_name", form.productName)
+
+    // Add the first image (the microservice only accepts one image)
+    if (uploadedFiles.value.length > 0) {
+      formData.append("image", uploadedFiles.value[0])
+    }
     
-    // Add form fields
-    formData.append('user_id', userId.value);
-    formData.append('product_name', form.productName);
-    formData.append('description', form.description);
-    formData.append('condition', form.condition);
-    formData.append('full_name', form.fullName);
-    formData.append('email', form.email);
-    formData.append('phone', form.phone);
-    formData.append('address', form.address);
-    
-    // Add images
-    uploadedFiles.value.forEach((file, index) => {
-      formData.append(`image_${index}`, file);
-    });
-    
-    // Submit the form data
-    const response = await fetch('http://localhost:5400/trade-in/request', {
-      method: 'POST',
-      body: formData
-    });
+    // Submit the form data to the trade-in microservice
+    const response = await fetch("http://localhost:5400/trade-in/request", {
+      method: "POST",
+      body: formData,
+    })
     
     if (!response.ok) {
       throw new Error(`Failed to submit trade-in request: ${response.status}`);
@@ -590,15 +596,29 @@ const submitTradeIn = async () => {
     const data = await response.json();
     console.log('Trade-in submitted successfully:', data);
     
-    // Reset form but keep personal information
-    form.productName = '';
-    form.description = '';
-    form.condition = '';
-    imagePreviewUrls.value = [];
-    uploadedFiles.value = [];
+
+    // Add the new trade-in to the history
+    const newTradeIn = {
+      id: data.trade_id || Date.now(), // Use the ID from the API or generate a timestamp
+      productName: form.productName,
+      condition: form.condition,
+      status: "Pending",
+      submittedDate: new Date(),
+      image: data.image_url || imagePreviewUrls.value[0], // Use the image URL from the API or the preview
+    }
     
-    // Refresh trade-in history
-    await loadTradeInHistory();
+    // Add to the beginning of the array to show the newest first
+    tradeIns.value.unshift(newTradeIn)
+
+    // Reset form
+    Object.keys(form).forEach((key) => {
+      form[key] = ""
+    })
+    imagePreviewUrls.value = []
+    uploadedFiles.value = []
+    
+    // Show success message
+    alert("Trade-in request submitted successfully!")
     
     // Switch to status tab to show the new submission
     activeTab.value = 'status';
@@ -611,7 +631,6 @@ const submitTradeIn = async () => {
   }
 };
 
-// Claim reward points function
 const claimRewardPoints = async (item, index) => {
   try {
     // Call the API to claim reward points
@@ -632,24 +651,57 @@ const claimRewardPoints = async (item, index) => {
       throw new Error(`Failed to claim reward points: ${response.status}`);
     }
     
-    // Update the item status to claimed
-    const updateResponse = await fetch(`http://localhost:5400/trade-in/status/${item.id}`, {
+    // Get the response data to get the updated total points
+    const walletData = await response.json();
+    console.log('Wallet updated successfully:', walletData);
+    
+    // Update the leaderboard with the total points
+    const leaderboardResponse = await fetch(`http://localhost:5404/leaderboard/update`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        trade_in_id: item.id,
-        status: 'Claimed'
+        user_id: userId.value,
+        total_points: walletData.total_points || walletData.balance
       })
     });
     
-    if (!updateResponse.ok) {
-      throw new Error(`Failed to update trade-in status: ${updateResponse.status}`);
+    if (!leaderboardResponse.ok) {
+      console.error('Failed to update leaderboard, but points were credited');
+    } else {
+      console.log('Leaderboard updated successfully');
     }
     
-    // Refresh trade-in history
-    await loadTradeInHistory();
+    // Only try to update the trade-in status if it's not a mock item
+    if (item.productName !== "Asgaard Sofa") {
+      try {
+        const updateResponse = await fetch(`http://localhost:5400/trade-in/status/${item.id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            trade_in_id: item.id,
+            status: 'Claimed'
+          })
+        });
+        
+        if (!updateResponse.ok) {
+          console.warn(`Failed to update trade-in status in backend, but points were credited: ${updateResponse.status}`);
+        }
+      } catch (statusError) {
+        console.warn('Error updating trade-in status, but points were credited:', statusError);
+      }
+    } else {
+      console.log('Skipping trade-in status update for mock item:', item.productName);
+    }
+    
+    // Update the local state to reflect the claimed status regardless of backend status
+    console.log('Updating item status to Claimed:', item.productName);
+    tradeIns.value[index].status = "Claimed";
+    tradeIns.value[index].claimedDate = new Date();
+    console.log('Updated trade-in status in UI:', tradeIns.value[index]);
     
     // Show notification
     showNotification.value = true;
@@ -662,58 +714,18 @@ const claimRewardPoints = async (item, index) => {
 
 // Update the viewDetails function to handle the "Claimed" status the same as "Accepted"
 const viewDetails = (item) => {
-  if (item.status === 'Pending') {
-    showPendingDetails.value = true;
-  } else if (item.status === 'Rejected') {
-    showRejectedDetails.value = true;
-  } else if (item.status === 'Accepted' || item.status === 'Claimed') {
-    // Show the same details for both Accepted and Claimed items
-    showAcceptedDetails.value = true;
-  } else {
-    console.log('View details for:', item);
-    // Implement view details functionality for other statuses
+  if (item.status === "Pending") {
+    showPendingDetails.value = true
+  } else if (item.status === "Rejected") {
+    showRejectedDetails.value = true
+  } else if (item.status === "Accepted" || item.status === "Claimed") {
+    showAcceptedDetails.value = true
   }
-};
+}
 
-// Cancel request confirmation
 const confirmCancelRequest = (index) => {
   itemToCancel.value = index;
   showCancelConfirmation.value = true;
-};
-
-// Cancel request function
-const cancelRequest = async () => {
-  if (itemToCancel.value !== null) {
-    try {
-      const itemId = tradeIns.value[itemToCancel.value].id;
-      
-      // Call the API to cancel the trade-in request
-      const response = await fetch(`http://localhost:5400/trade-in/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          trade_in_id: itemId
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to cancel trade-in request: ${response.status}`);
-      }
-      
-      // Refresh trade-in history
-      await loadTradeInHistory();
-      
-      // Close the confirmation popup
-      showCancelConfirmation.value = false;
-      itemToCancel.value = null;
-      
-    } catch (error) {
-      console.error('Error canceling trade-in request:', error);
-      alert(`Failed to cancel trade-in request: ${error.message}`);
-    }
-  }
 };
 
 // Helper functions
