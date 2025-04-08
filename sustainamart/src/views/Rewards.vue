@@ -40,7 +40,7 @@
             </div>
             
             <div v-if="currentMissions.length > 0" class="missions-list">
-              <div v-for="mission in currentMissions" :key="mission.id" class="mission-card">
+              <div v-for="mission in currentMissions" :key="mission.mission_id" class="mission-card">
                 <div class="mission-header">
                   <span class="points-badge">+{{ mission.reward_points }} points</span>
                   <span class="mission-progress-text">{{ mission.current }} of {{ mission.goal }}</span>
@@ -49,7 +49,7 @@
                 <div class="progress-bar">
                   <div 
                     class="progress-fill" 
-                    :class="{ 'animate-progress': !showPopup }"
+                    :class="{ 'animate-progress': !showPopup, 'progress-updated': mission.recentlyUpdated }"
                     :style="{ width: showPopup ? '0%' : `${Math.min((mission.current / mission.goal) * 100, 100)}%` }"
                   ></div>
                 </div>
@@ -180,6 +180,17 @@
         <span>Voucher applied to your cart!</span>
       </div>
     </div>
+
+    <!-- Purchase Success Notification -->
+    <div v-if="showPurchaseSuccess" class="purchase-success" :class="{ 'show': showPurchaseSuccess }">
+      <div class="purchase-success-content">
+        <check-circle-icon class="purchase-success-icon" />
+        <div class="purchase-success-text">
+          <span class="purchase-success-title">Purchase Successful!</span>
+          <span class="purchase-success-subtitle">Your mission progress has been updated.</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -235,6 +246,9 @@ const popupData = reactive({
 // Voucher applied notification
 const showVoucherApplied = ref(false)
 
+// Purchase success notification
+const showPurchaseSuccess = ref(false)
+
 // Missions data
 const allMissions = ref([])
 const joinedMissions = ref([])
@@ -246,6 +260,9 @@ const leaderboard = reactive([])
 const isFirstLoad = ref(true)
 const appStartTime = ref(null)
 
+// Store previous mission data to detect changes
+const previousMissionData = ref({})
+
 // Computed properties for filtered missions
 const currentMissions = computed(() => {
   return joinedMissions.value.filter((mission) => !mission.completed)
@@ -253,10 +270,8 @@ const currentMissions = computed(() => {
 
 const availableMissions = computed(() => {
   const joinedMissionIds = joinedMissions.value.map((mission) => mission.mission_id)
-  console.log(joinedMissionIds, joinedMissions, allMissions)
   return allMissions.value.filter((mission) => !joinedMissionIds.includes(mission.id))
 })
-
 
 // Computed property for sorted leaderboard (descending order by points)
 const sortedLeaderboard = computed(() => {
@@ -272,15 +287,31 @@ const leaderboardInterval = ref(null)
 const walletInterval = ref(null)
 const missionCheckInterval = ref(null)
 
-// Check for URL parameters indicating mission completion
+// Check for URL parameters indicating mission completion or purchase success
 const checkUrlForMissionCompletion = () => {
   const urlParams = new URLSearchParams(window.location.search)
   const missionCompleted = urlParams.get("missionCompleted")
+  const purchaseSuccess = urlParams.get("purchaseSuccess")
 
   if (missionCompleted === "true") {
     // Clear the URL parameter without refreshing the page
     const newUrl = window.location.pathname
     window.history.replaceState({}, document.title, newUrl)
+  }
+
+  if (purchaseSuccess === "true") {
+    // Show purchase success notification
+    showPurchaseSuccess.value = true
+    setTimeout(() => {
+      showPurchaseSuccess.value = false
+    }, 5000)
+    
+    // Clear the URL parameter without refreshing the page
+    const newUrl = window.location.pathname
+    window.history.replaceState({}, document.title, newUrl)
+    
+    // Refresh mission data to show updated progress
+    fetchJoinedMissions()
   }
 }
 
@@ -411,7 +442,6 @@ const fetchAvailableVouchers = async () => {
 }
 
 // Function to fetch joined missions
-
 const fetchJoinedMissions = async () => {
   try {
     const response = await fetch(`http://localhost:5403/mission/status/${userId.value}`)
@@ -421,15 +451,65 @@ const fetchJoinedMissions = async () => {
     }
 
     const data = await response.json()
-
-    joinedMissions.value = data.map((mission) => ({
-      ...mission,
-      current: mission.progress || 0, // Use progress from backend
-      goal: mission.goal || 1,
-      inProgress: (mission.progress || 0) < mission.goal,
-      completed: mission.completed || false,
-      event_type: mission.event_type || "default", // In case used in getMissionInstruction
-    }))
+    
+    // Store current mission data to detect changes on next update
+    const currentMissionData = {}
+    joinedMissions.value.forEach(mission => {
+      currentMissionData[mission.mission_id] = {
+        progress: mission.current,
+        completed: mission.completed
+      }
+    })
+    
+    // Update joined missions with new data
+    joinedMissions.value = data.map((mission) => {
+      // Check if this mission was in the previous data
+      const prevMission = currentMissionData[mission.mission_id]
+      
+      // Determine if this mission was updated (progress increased)
+      const wasUpdated = prevMission && 
+                         (mission.progress > prevMission.progress || 
+                          mission.completed && !prevMission.completed)
+      
+      return {
+        ...mission,
+        current: mission.progress || 0, // Use progress from backend
+        goal: mission.goal || 1,
+        inProgress: (mission.progress || 0) < mission.goal,
+        completed: mission.completed || false,
+        event_type: mission.event_type || "default",
+        recentlyUpdated: wasUpdated // Flag to highlight updated missions
+      }
+    })
+    
+    // Check if any mission was updated
+    const updatedMissions = joinedMissions.value.filter(m => m.recentlyUpdated)
+    if (updatedMissions.length > 0) {
+      // Show purchase success notification if we detected an update
+      if (!showPurchaseSuccess.value) {
+        showPurchaseSuccess.value = true
+        setTimeout(() => {
+          showPurchaseSuccess.value = false
+        }, 5000)
+      }
+      
+      // Clear the recently updated flag after animation
+      setTimeout(() => {
+        joinedMissions.value = joinedMissions.value.map(mission => ({
+          ...mission,
+          recentlyUpdated: false
+        }))
+      }, 3000)
+    }
+    
+    // Save current mission data for next comparison
+    previousMissionData.value = {}
+    joinedMissions.value.forEach(mission => {
+      previousMissionData.value[mission.mission_id] = {
+        progress: mission.current,
+        completed: mission.completed
+      }
+    })
 
     console.log("Joined missions fetched successfully:", joinedMissions.value)
     return joinedMissions.value
@@ -442,6 +522,31 @@ const fetchJoinedMissions = async () => {
 // Function to fetch available missions from Supabase
 const fetchAvailableMissions = async () => {
   try {
+    // First try to fetch from the mission microservice
+    try {
+      const response = await fetch("http://localhost:5403/mission/all")
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Clear and populate using ref
+        allMissions.value = data.map((mission) => ({
+          id: mission.id,
+          name: mission.name,
+          description: mission.description,
+          reward_points: mission.reward_points || 100,
+          goal: mission.goal || 1,
+          event_type: mission.event_type || null,
+        }))
+        
+        console.log("Available missions fetched from microservice:", data)
+        return data
+      }
+    } catch (err) {
+      console.warn("Could not fetch missions from microservice, falling back to Supabase")
+    }
+    
+    // Fallback to Supabase if microservice is not available
     const { data, error: supabaseError } = await supabase.from("mission").select("*")
 
     if (supabaseError) {
@@ -458,7 +563,7 @@ const fetchAvailableMissions = async () => {
       event_type: mission.event_type || null,
     }))
 
-    console.log("Available missions fetched successfully:", data)
+    console.log("Available missions fetched from Supabase:", data)
     return data
   } catch (error) {
     console.error("Error fetching available missions:", error)
@@ -466,6 +571,53 @@ const fetchAvailableMissions = async () => {
   }
 }
 
+// Function to check for mission updates by comparing with previous data
+const checkForMissionUpdates = async () => {
+  try {
+    // Fetch the latest mission data
+    const response = await fetch(`http://localhost:5403/mission/status/${userId.value}`)
+    
+    if (!response.ok) {
+      return
+    }
+    
+    const data = await response.json()
+    
+    // Check if any mission has been updated
+    let hasUpdates = false
+    
+    data.forEach(mission => {
+      const prevMission = previousMissionData.value[mission.mission_id]
+      
+      if (prevMission) {
+        // Check if progress increased or mission completed
+        if (mission.progress > prevMission.progress || 
+            (mission.completed && !prevMission.completed)) {
+          hasUpdates = true
+        }
+      }
+    })
+    
+    if (hasUpdates) {
+      // Update the missions with the new data
+      await fetchJoinedMissions()
+      
+      // Show purchase success notification
+      showPurchaseSuccess.value = true
+      setTimeout(() => {
+        showPurchaseSuccess.value = false
+      }, 5000)
+      
+      // Refresh wallet data to get updated points
+      await fetchWalletData()
+      
+      // Refresh leaderboard
+      await fetchLeaderboardData()
+    }
+  } catch (error) {
+    console.error('Error checking for mission updates:', error)
+  }
+}
 
 // Function to fetch all data
 const fetchAllData = async () => {
@@ -512,13 +664,47 @@ const getMissionInstruction = (eventType) => {
       return "To complete: Recycle an item at a collection point"
     case "reduce_carbon":
       return "To complete: Use eco-friendly shipping option at checkout"
-    case "trade_in":
+    case "TRADE_IN":
       return "To complete: Trade in an old item on the Trade-In page"
     case "checkout_completed":
     case "purchase_product":
+    case "ECO_PURCHASE":
       return "To complete: Finish a purchase by proceeding to checkout"
     default:
       return "To complete: Follow the mission requirements"
+  }
+}
+
+// Function to manually trigger mission update (for testing)
+const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
+  try {
+    const response = await fetch(`http://localhost:5403/mission/update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId.value,
+        event_type: eventType
+      }),
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Failed to update mission: ${response.status}`)
+    }
+    
+    // Refresh mission data
+    await fetchJoinedMissions()
+    
+    // Refresh wallet data
+    await fetchWalletData()
+    
+    // Refresh leaderboard
+    await fetchLeaderboardData()
+    
+    console.log("Mission update triggered successfully")
+  } catch (error) {
+    console.error("Error triggering mission update:", error)
   }
 }
 
@@ -549,14 +735,13 @@ const joinMission = async (mission) => {
       reward_points: mission.reward_points,
       goal: mission.goal || 1,
       current: 0,
+      progress: 0,
       inProgress: true,
       completed: false,
       event_type: mission.event_type,
     }
 
     joinedMissions.value.push(newMission)
-    console.log("new mission: ")
-
 
     // Show popup with specific instructions
     popupData.title = "Mission Joined"
@@ -575,75 +760,6 @@ const joinMission = async (mission) => {
     showPopup.value = true
   }
 }
-
-// Function to complete a mission
-const completeMission = async (mission) => {
-  try {
-    // Call the API to complete the mission
-    const response = await fetch(`http://localhost:5403/mission/update`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        user_id: userId.value,
-        event_type: mission.event_type || "manual_complete",
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to complete mission: ${response.status}`)
-    }
-
-    const data = await response.json()
-
-    // Update points awarded
-    lastPointsAwarded.value = mission.reward_points
-
-    // Mark the mission as completed in the local state
-    const missionIndex = joinedMissions.value.findIndex((m) => m.id === mission.id)
-    if (missionIndex !== -1) {
-      joinedMissions.value[missionIndex].completed = true
-      joinedMissions.value[missionIndex].current = joinedMissions.value[missionIndex].goal
-      joinedMissions.value[missionIndex].inProgress = false
-    }
-
-    // Refresh wallet data to get updated points
-    await fetchWalletData()
-
-    // Refresh leaderboard
-    await fetchLeaderboardData()
-
-    // Show points updated animation
-    pointsUpdated.value = true
-    setTimeout(() => {
-      pointsUpdated.value = false
-    }, 2000)
-
-    // Show toast notification
-    showPointsToast.value = true
-    setTimeout(() => {
-      showPointsToast.value = false
-    }, 3000)
-
-    // Show success popup
-    popupData.title = "Mission Completed"
-    popupData.message = `Congratulations! You've completed the "${mission.name}" mission and earned ${mission.reward_points} points!`
-    popupData.success = true
-    popupData.buttonText = "Claim Reward"
-    showPopup.value = true
-  } catch (error) {
-    console.error("Error completing mission:", error)
-
-    // Show error popup
-    popupData.title = "Error"
-    popupData.message = "Failed to complete mission. Please try again later."
-    popupData.success = false
-    popupData.buttonText = "OK"
-    showPopup.value = true
-  }
-}
-
 
 // Function to redeem a voucher
 const redeemVoucher = async (voucher) => {
@@ -684,7 +800,7 @@ const redeemVoucher = async (voucher) => {
 
     // Show success popup
     popupData.title = "Voucher Redeemed"
-    popupData.message = `You've successfully redeemed a $${voucher.amount} voucher! It has been added to your vouchers and is available in your cart.`
+    popupData.message = `You've successfully redeemed a ${voucher.amount} voucher! It has been added to your vouchers and is available in your cart.`
     popupData.success = true
     popupData.buttonText = "OK"
     showPopup.value = true
@@ -764,6 +880,9 @@ const setupPolling = () => {
 
   // Poll wallet data every 60 seconds
   walletInterval.value = setInterval(fetchWalletData, 60000)
+  
+  // Poll for mission updates every 10 seconds
+  missionCheckInterval.value = setInterval(checkForMissionUpdates, 10000)
 }
 
 // Clean up polling intervals
@@ -791,11 +910,25 @@ onMounted(() => {
 
   // Set up polling
   setupPolling()
+  
+  // Listen for purchase events from other pages
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'purchase_completed') {
+      // Trigger mission update for purchase event
+      triggerMissionUpdate('ECO_PURCHASE')
+      
+      // Clear the storage item
+      localStorage.removeItem('purchase_completed')
+    }
+  })
 })
 
 // Clean up when component is unmounted
 onUnmounted(() => {
   cleanupPolling()
+  
+  // Remove event listeners
+  window.removeEventListener('storage', () => {})
 })
 </script>
 
@@ -1156,6 +1289,18 @@ button {
 /* Add animation class for progress bar */
 .animate-progress {
   transition: width 2s ease-out;
+}
+
+/* Add highlight for recently updated progress bars */
+.progress-updated {
+  background-color: #704116;
+  animation: pulse-progress 2s ease-in-out;
+}
+
+@keyframes pulse-progress {
+  0% { background-color: #bb9d78; }
+  50% { background-color: #704116; }
+  100% { background-color: #bb9d78; }
 }
 
 .mission-date {
@@ -1623,5 +1768,55 @@ button {
 
 .voucher-applied-icon {
   color: white;
+}
+
+/* Purchase Success Notification */
+.purchase-success {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  background-color: #2e7d32;
+  color: white;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 100;
+}
+
+.purchase-success.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.purchase-success-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.purchase-success-icon {
+  color: white;
+  width: 2rem;
+  height: 2rem;
+}
+
+.purchase-success-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.purchase-success-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.purchase-success-subtitle {
+  font-size: 0.875rem;
+  opacity: 0.9;
 }
 </style>
