@@ -114,19 +114,6 @@
                     <input type="text" id="productName" v-model="form.productName" required placeholder="Enter product name">
                   </div>
                 </div>
-                <div class="form-group">
-                  <label for="category">Category</label>
-                  <div class="select-wrapper">
-                    <select id="category" v-model="form.category" required>
-                      <option value="">Select a category</option>
-                      <option value="green-beauty">Green Beauty</option>
-                      <option value="sustainable-fashion">Sustainable Fashion</option>
-                      <option value="tech-gadgets">Tech Gadgets</option>
-                      <option value="furniture-home-decor">Furniture & Home Decor</option>
-                    </select>
-                    <ChevronDownIcon size="18" class="select-icon" />
-                  </div>
-                </div>
               </div>
               <div class="form-group">
                 <label for="description">Product Description</label>
@@ -150,27 +137,6 @@
                       <option value="poor">Poor</option>
                     </select>
                     <ChevronDownIcon size="18" class="select-icon" />
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="age">Age of Product (years)</label>
-                  <div class="input-wrapper">
-                    <CalendarIcon size="18" class="input-icon" />
-                    <input 
-                      type="number" 
-                      id="age" 
-                      v-model="form.age" 
-                      min="0" 
-                      step="1"
-                      @keypress="validateAgeKeypress"
-                      @input="validateAge"
-                      required 
-                      placeholder="Enter product age"
-                    >
-                  </div>
-                  <div v-if="ageError" class="input-error">
-                    <AlertCircleIcon size="14" class="error-icon" />
-                    Please enter a valid whole number for product age
                   </div>
                 </div>
               </div>
@@ -486,17 +452,15 @@ const isLoading = ref(false);
 const error = ref(null);
 const isSubmitting = ref(false);
 
-// Form data
+// Form data with autofilled personal information
 const form = reactive({
-  fullName: '',
-  email: '',
-  phone: '',
-  address: '',
+  fullName: 'Charlie Yeo',
+  email: 'charlieyeo00@gmail.com',
+  phone: '9484 3940',
+  address: 'Toh Guan Rd Blk 394 #05-12',
   productName: '',
-  category: '',
   description: '',
-  condition: '',
-  age: ''
+  condition: ''
 });
 
 // Image upload handling
@@ -514,7 +478,6 @@ const showAcceptedDetails = ref(false);
 
 // Form validation
 const phoneError = ref(false);
-const ageError = ref(false);
 
 // Trade-in history
 const tradeIns = ref([]);
@@ -525,27 +488,6 @@ const validatePhoneNumber = () => {
   
   // Check if the phone number is valid (8 digits)
   phoneError.value = form.phone.length > 0 && form.phone.length !== 8;
-};
-
-const validateAge = () => {
-  // Convert to string first to handle the case when it's empty
-  const ageStr = String(form.age);
-  
-  // Check if it's a valid whole number
-  if (ageStr && (!/^\d+$/.test(ageStr) || parseFloat(ageStr) < 0)) {
-    ageError.value = true;
-    // Force to be a valid whole number
-    form.age = ageStr.replace(/[^\d]/g, '');
-  } else {
-    ageError.value = false;
-  }
-};
-
-const validateAgeKeypress = (event) => {
-  // Only allow numbers (0-9)
-  if (!/[0-9]/.test(event.key)) {
-    event.preventDefault();
-  }
 };
 
 const triggerFileInput = () => {
@@ -603,9 +545,8 @@ const loadTradeInHistory = async () => {
 const submitTradeIn = async () => {
   // Validate phone number before submission
   validatePhoneNumber();
-  validateAge();
   
-  if (phoneError.value || ageError.value) {
+  if (phoneError.value) {
     alert('Please correct the errors in the form before submitting');
     return;
   }
@@ -624,10 +565,8 @@ const submitTradeIn = async () => {
     // Add form fields
     formData.append('user_id', userId.value);
     formData.append('product_name', form.productName);
-    formData.append('category', form.category);
     formData.append('description', form.description);
     formData.append('condition', form.condition);
-    formData.append('age', form.age);
     formData.append('full_name', form.fullName);
     formData.append('email', form.email);
     formData.append('phone', form.phone);
@@ -651,10 +590,10 @@ const submitTradeIn = async () => {
     const data = await response.json();
     console.log('Trade-in submitted successfully:', data);
     
-    // Reset form
-    Object.keys(form).forEach(key => {
-      form[key] = '';
-    });
+    // Reset form but keep personal information
+    form.productName = '';
+    form.description = '';
+    form.condition = '';
     imagePreviewUrls.value = [];
     uploadedFiles.value = [];
     
@@ -694,13 +633,13 @@ const claimRewardPoints = async (item, index) => {
     }
     
     // Update the item status to claimed
-    const updateResponse = await fetch(`http://localhost:5400/trade-in/status/${trade_in_id}`, {
+    const updateResponse = await fetch(`http://localhost:5400/trade-in/status/${item.id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        trade_in_id: trade_ins.id,
+        trade_in_id: item.id,
         status: 'Claimed'
       })
     });
