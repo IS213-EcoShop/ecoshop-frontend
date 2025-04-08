@@ -830,8 +830,27 @@ export default {
 
           // Check if payment is still processing
           if (this.isProcessingPayment) {
-            // If we're still processing, assume the user cancelled
-            this.handlePaymentFailure("Payment was cancelled or window was closed")
+            // Don't immediately assume failure - check the status first
+            this.checkPaymentStatusOnce(paymentId).then((status) => {
+              if (status === "successful") {
+                this.handlePaymentSuccess();
+              } else if (status === "failed" || status === "canceled") {
+                this.handlePaymentFailure("Payment was not completed");
+              } else {
+                // If still pending, wait a bit longer before checking again
+                // This handles cases where the webhook hasn't processed yet
+                setTimeout(() => {
+                  this.checkPaymentStatusOnce(paymentId).then((finalStatus) => {
+                    if (finalStatus === "successful") {
+                      this.handlePaymentSuccess();
+                    } else {
+                      // Now we can assume it was abandoned
+                      this.handlePaymentFailure("Payment appears to be abandoned");
+                    }
+                  });
+                }, 3000); // Wait 3 seconds before final check
+              }
+            });
           }
         }
       }, 1000)
@@ -842,16 +861,32 @@ export default {
 
     handleWindowFocus() {
       // If we're still processing payment and the user comes back to this window
-      // it likely means they abandoned the payment
+      // it might mean they abandoned the payment OR they completed it successfully
       if (this.isProcessingPayment && this.paymentId) {
         console.log("User returned to the page while payment was processing")
 
-        // Check payment status one more time before assuming cancellation
+        // Don't immediately assume failure - check the status first
         this.checkPaymentStatusOnce(this.paymentId).then((status) => {
-          if (status === "pending") {
-            this.handlePaymentFailure("Payment appears to be abandoned")
+          if (status === "successful") {
+            this.handlePaymentSuccess();
+          } else if (status === "failed" || status === "canceled") {
+            this.handlePaymentFailure("Payment was not completed");
+          } else if (status === "pending") {
+            // If still pending, wait a bit longer before checking again
+            // This handles cases where the webhook hasn't processed yet
+            setTimeout(() => {
+              this.checkPaymentStatusOnce(this.paymentId).then((finalStatus) => {
+                if (finalStatus === "successful") {
+                  this.handlePaymentSuccess();
+                } else if (this.isProcessingPayment) {
+                  // Only show the abandoned message if we're still processing
+                  // This prevents showing the message if another check succeeded
+                  this.handlePaymentFailure("Payment appears to be abandoned");
+                }
+              });
+            }, 3000); // Wait 3 seconds before final check
           }
-        })
+        });
       }
     },
 
@@ -910,6 +945,7 @@ export default {
     window.removeEventListener("focus", this.handleWindowFocus)
   },
 }
+
 
 
 </script>
