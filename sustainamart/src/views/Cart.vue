@@ -155,7 +155,7 @@
 <script>
 
 export default {
-  name: 'CartPage',
+  name: "CartPage",
   data() {
     return {
       cartItems: [],
@@ -164,10 +164,10 @@ export default {
       loadingRecommendations: false,
       error: null,
       showToast: false,
-      toastMessage: '',
+      toastMessage: "",
       userId: 200, // Using the userId from your example query
       isProcessingPayment: false,
-      paymentStatusMessage: 'Preparing your payment...',
+      paymentStatusMessage: "Preparing your payment...",
       stripePaymentUrl: null,
       paymentLinkAvailable: false,
       paymentCheckInterval: null,
@@ -177,14 +177,15 @@ export default {
       checkCount: 0,
       maxCheckAttempts: 20,
       activeMissions: [],
-      hasPurchaseMission: false
+      hasPurchaseMission: false,
+      windowCheckInterval: null,
     }
   },
   methods: {
     async fetchCartItems() {
-      this.isLoading = true;
-      this.error = null;
-      
+      this.isLoading = true
+      this.error = null
+
       try {
         // GraphQL query to fetch cart items with correct field names
         const query = `
@@ -202,45 +203,44 @@ export default {
               quantity
             }
           }
-        `;
-        
+        `
+
         // Use a relative URL that will be proxied by Vite
-        const response = await fetch('/graphql', {
-          method: 'POST',
+        const response = await fetch("/graphql", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             query,
-            variables: { userId: this.userId }
-          })
-        });
-        
+            variables: { userId: this.userId },
+          }),
+        })
+
         if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`);
+          throw new Error(`Server responded with status: ${response.status}`)
         }
-        
-        const result = await response.json();
-        
+
+        const result = await response.json()
+
         if (result.errors) {
-          throw new Error(result.errors[0].message);
+          throw new Error(result.errors[0].message)
         }
-        
-        this.cartItems = result.data.cart || [];
-        console.log('Cart items fetched:', this.cartItems);
-        
+
+        this.cartItems = result.data.cart || []
+        console.log("Cart items fetched:", this.cartItems)
       } catch (error) {
-        console.error('Error fetching cart:', error);
-        this.error = `Failed to load cart items: ${error.message}`;
-        this.cartItems = [];
+        console.error("Error fetching cart:", error)
+        this.error = `Failed to load cart items: ${error.message}`
+        this.cartItems = []
       } finally {
-        this.isLoading = false;
+        this.isLoading = false
       }
     },
-    
+
     async fetchRecommendations() {
-      this.loadingRecommendations = true;
-      
+      this.loadingRecommendations = true
+
       try {
         // GraphQL query to fetch recommendations with correct field names
         const query = `
@@ -257,263 +257,262 @@ export default {
               tagClass
             }
           }
-        `;
-        
-        const response = await fetch('/graphql', {
-          method: 'POST',
+        `
+
+        const response = await fetch("/graphql", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             query,
-            variables: { userId: this.userId }
-          })
-        });
-        
+            variables: { userId: this.userId },
+          }),
+        })
+
         if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`);
+          throw new Error(`Server responded with status: ${response.status}`)
         }
-        
-        const result = await response.json();
-        
+
+        const result = await response.json()
+
         if (result.errors) {
-          throw new Error(result.errors[0].message);
+          throw new Error(result.errors[0].message)
         }
-        
-        this.recommendations = result.data.recommendations || [];
-        console.log('Recommendations fetched:', this.recommendations);
-        
+
+        this.recommendations = result.data.recommendations || []
+        console.log("Recommendations fetched:", this.recommendations)
       } catch (error) {
-        console.error('Error fetching recommendations:', error);
-        this.recommendations = [];
+        console.error("Error fetching recommendations:", error)
+        this.recommendations = []
       } finally {
-        this.loadingRecommendations = false;
+        this.loadingRecommendations = false
       }
     },
-    
+
     async decreaseQuantity(index) {
-      const item = this.cartItems[index];
+      const item = this.cartItems[index]
       if (item.quantity <= 1) {
-        return; // Don't decrement below 1
+        return // Don't decrement below 1
       }
-      
+
       try {
         // First update the UI optimistically
-        this.cartItems[index].quantity -= 1;
-        
+        this.cartItems[index].quantity -= 1
+
         // Then connect to the specified backend endpoint
-        const response = await fetch('http://localhost:5300/cart-product/decrement', {
-          method: 'POST',
+        const response = await fetch("http://localhost:5300/cart-product/decrement", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             userID: this.userId,
-            productId: item.productId
-          })
-        });
+            productId: item.productId,
+          }),
+        })
 
         if (!response.ok) {
-          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`);
+          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`)
           // Revert the optimistic update if the server request fails
-          this.cartItems[index].quantity += 1;
-          return false;
+          this.cartItems[index].quantity += 1
+          return false
         }
 
-        const data = await response.json();
-        console.log('Server cart updated successfully:', data);
-        return true;
+        const data = await response.json()
+        console.log("Server cart updated successfully:", data)
+        return true
       } catch (error) {
-        console.error('Error updating cart:', error);
+        console.error("Error updating cart:", error)
         // Revert the optimistic update if the request fails
-        this.cartItems[index].quantity += 1;
-        return false;
+        this.cartItems[index].quantity += 1
+        return false
       }
     },
-    
+
     async removeItem(index) {
-      const item = this.cartItems[index];
-      
+      const item = this.cartItems[index]
+
       try {
         // Store the item in case we need to revert
-        const removedItem = { ...this.cartItems[index] };
-        
+        const removedItem = { ...this.cartItems[index] }
+
         // Remove from local state optimistically
-        this.cartItems.splice(index, 1);
-        
+        this.cartItems.splice(index, 1)
+
         // Connect to the specified backend endpoint
-        const response = await fetch('http://localhost:5300/cart-product/remove', {
-          method: 'POST',
+        const response = await fetch("http://localhost:5300/cart-product/remove", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             userID: this.userId,
-            productId: item.productId
-          })
-        });
+            productId: item.productId,
+          }),
+        })
 
         if (!response.ok) {
-          console.warn(`Failed to remove item from server cart: ${response.status} ${response.statusText}`);
+          console.warn(`Failed to remove item from server cart: ${response.status} ${response.statusText}`)
           // Revert the optimistic update if the server request fails
-          this.cartItems.splice(index, 0, removedItem);
-          return false;
+          this.cartItems.splice(index, 0, removedItem)
+          return false
         }
 
-        const data = await response.json();
-        console.log('Item removed from server cart successfully:', data);
-        
+        const data = await response.json()
+        console.log("Item removed from server cart successfully:", data)
+
         // Show toast notification
-        this.toastMessage = `${item.name} removed from cart!`;
-        this.showToast = true;
+        this.toastMessage = `${item.name} removed from cart!`
+        this.showToast = true
         setTimeout(() => {
-          this.showToast = false;
-        }, 3000);
-        
-        return true;
+          this.showToast = false
+        }, 3000)
+
+        return true
       } catch (error) {
-        console.error('Error removing item from cart:', error);
+        console.error("Error removing item from cart:", error)
         // Revert the optimistic update if the request fails
-        this.cartItems.splice(index, 0, item);
-        return false;
+        this.cartItems.splice(index, 0, item)
+        return false
       }
     },
-    
+
     async addToCart(product) {
       try {
         // First update the UI optimistically
-        const existingItemIndex = this.cartItems.findIndex(item => item.productId === product.productId);
-        
+        const existingItemIndex = this.cartItems.findIndex((item) => item.productId === product.productId)
+
         if (existingItemIndex !== -1) {
           // If item already exists in cart, increase quantity
-          this.cartItems[existingItemIndex].quantity += 1;
+          this.cartItems[existingItemIndex].quantity += 1
         } else {
           // Otherwise add new item to cart
           this.cartItems.push({
             ...product,
-            quantity: 1
-          });
+            quantity: 1,
+          })
         }
-        
+
         // Then connect to the specified backend endpoint
-        const response = await fetch('http://localhost:5300/cart-product/add', {
-          method: 'POST',
+        const response = await fetch("http://localhost:5300/cart-product/add", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             userID: this.userId,
             productId: product.productId,
-            quantity: 1
-          })
-        });
+            quantity: 1,
+          }),
+        })
 
         if (!response.ok) {
-          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`);
-          
+          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`)
+
           // Revert the optimistic update if the server request fails
           if (existingItemIndex !== -1) {
-            this.cartItems[existingItemIndex].quantity -= 1;
+            this.cartItems[existingItemIndex].quantity -= 1
           } else {
-            this.cartItems = this.cartItems.filter(item => item.productId !== product.productId);
+            this.cartItems = this.cartItems.filter((item) => item.productId !== product.productId)
           }
-          return false;
+          return false
         }
 
-        const data = await response.json();
-        console.log('Product added to server cart successfully:', data);
-        
+        const data = await response.json()
+        console.log("Product added to server cart successfully:", data)
+
         // Show toast notification
-        this.toastMessage = `${product.name} added to cart!`;
-        this.showToast = true;
+        this.toastMessage = `${product.name} added to cart!`
+        this.showToast = true
         setTimeout(() => {
-          this.showToast = false;
-        }, 3000);
-        
-        return true;
+          this.showToast = false
+        }, 3000)
+
+        return true
       } catch (error) {
-        console.error('Error adding item to cart:', error);
-        
+        console.error("Error adding item to cart:", error)
+
         // Revert the optimistic update if the request fails
-        const existingItemIndex = this.cartItems.findIndex(item => item.productId === product.productId);
+        const existingItemIndex = this.cartItems.findIndex((item) => item.productId === product.productId)
         if (existingItemIndex !== -1) {
-          this.cartItems[existingItemIndex].quantity -= 1;
+          this.cartItems[existingItemIndex].quantity -= 1
           if (this.cartItems[existingItemIndex].quantity <= 0) {
-            this.cartItems = this.cartItems.filter(item => item.productId !== product.productId);
+            this.cartItems = this.cartItems.filter((item) => item.productId !== product.productId)
           }
         } else {
-          this.cartItems = this.cartItems.filter(item => item.productId !== product.productId);
+          this.cartItems = this.cartItems.filter((item) => item.productId !== product.productId)
         }
-        
-        return false;
+
+        return false
       }
     },
-    
+
     calculateSubtotal() {
-      return this.cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+      return this.cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
     },
 
     async checkout() {
-      if (this.isProcessingPayment) return;
-      
-      this.isProcessingPayment = true;
-      this.paymentStatusMessage = 'Preparing your payment...';
-      this.error = null;
-      
+      if (this.isProcessingPayment) return
+
+      this.isProcessingPayment = true
+      this.paymentStatusMessage = "Preparing your payment..."
+      this.error = null
+
       try {
-        console.log("🔄 Initiating checkout...");
-        
+        console.log("🔄 Initiating checkout...")
+
         // Check if we need to update mission progress for purchase
         if (this.hasPurchaseMission) {
-          await this.updateMissionProgress('purchase_product');
+          await this.updateMissionProgress("purchase_product")
         }
-        
+
         // Place order via microservice
-        const placeOrderResponse = await fetch('http://127.0.0.1:8000/place_order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userID: this.userId })
-        });
+        const placeOrderResponse = await fetch("http://127.0.0.1:8000/place_order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userID: this.userId }),
+        })
 
         if (!placeOrderResponse.ok) {
-          throw new Error('Order placement failed');
+          throw new Error("Order placement failed")
         }
 
         // Parse the response to get the Stripe payment URL
-        const orderData = await placeOrderResponse.json();
-        console.log("✅ Order response received:", orderData);
-        
+        const orderData = await placeOrderResponse.json()
+        console.log("✅ Order response received:", orderData)
+
         if (orderData.code === 201 && orderData.payment_details.stripe_session_url) {
           // Store the Stripe payment URL
-          this.stripePaymentUrl = orderData.payment_details.stripe_session_url;
-          
+          this.stripePaymentUrl = orderData.payment_details.stripe_session_url
+
           // Extract checkout session ID from the URL if possible
-          const sessionIdMatch = this.stripePaymentUrl.match(/session_id=([^&]*)/);
+          const sessionIdMatch = this.stripePaymentUrl.match(/session_id=([^&]*)/)
           if (sessionIdMatch && sessionIdMatch[1]) {
-            this.checkoutSessionId = sessionIdMatch[1];
-            console.log("Extracted checkout session ID:", this.checkoutSessionId);
+            this.checkoutSessionId = sessionIdMatch[1]
+            console.log("Extracted checkout session ID:", this.checkoutSessionId)
           }
-          
+
           // Store payment ID for checking payment status
           if (orderData.payment_details && orderData.payment_details.paymentID) {
-            this.paymentId = orderData.payment_details.paymentID;
+            this.paymentId = orderData.payment_details.paymentID
           }
-          
+
           // Store order ID if available
           if (orderData.order_details) {
-            this.orderId = Object.keys(orderData.order_details)[0];
+            this.orderId = Object.keys(orderData.order_details)[0]
           }
-          
+
           // Update status message
-          this.paymentStatusMessage = 'Redirecting to payment page...';
-          
+          this.paymentStatusMessage = "Redirecting to payment page..."
+
           // Open the Stripe payment URL in a new window
-          const paymentWindow = window.open(this.stripePaymentUrl, '_blank');
-          
+          const paymentWindow = window.open(this.stripePaymentUrl, "_blank")
+
           if (!paymentWindow) {
             // If popup is blocked, provide a link for the user to click
-            this.paymentLinkAvailable = true;
-            this.paymentStatusMessage = 'Payment window was blocked.';
+            this.paymentLinkAvailable = true
+            this.paymentStatusMessage = "Payment window was blocked."
             this.error = `
               <div class="payment-link-container">
                 <p>Payment popup was blocked by your browser.</p>
@@ -521,332 +520,398 @@ export default {
                   Click here to proceed to payment
                 </a>
               </div>
-            `;
-            this.isProcessingPayment = false;
-            return;
+            `
+            this.isProcessingPayment = false
+            return
           }
-          
-          // Start checking payment status
-          this.startPaymentStatusCheck(orderData);
-          
+
+          if (paymentWindow) {
+            // Start checking payment status
+            this.startPaymentStatusCheck(orderData)
+
+            // Also monitor if the payment window is closed
+            this.monitorPaymentWindow(paymentWindow, this.paymentId)
+          }
         } else {
-          throw new Error('Invalid response from server: Missing payment URL');
+          throw new Error("Invalid response from server: Missing payment URL")
         }
-        
       } catch (error) {
-        console.error('Error during checkout:', error);
-        this.error = `Checkout error: ${error.message}`;
-        this.isProcessingPayment = false;
+        console.error("Error during checkout:", error)
+        this.error = `Checkout error: ${error.message}`
+        this.isProcessingPayment = false
       }
     },
-    
+
     startPaymentStatusCheck(orderData) {
       // Clear any existing interval
       if (this.paymentCheckInterval) {
-        clearInterval(this.paymentCheckInterval);
+        clearInterval(this.paymentCheckInterval)
       }
-      
+
       // Make sure we have the payment ID
       if (!orderData.payment_details || !orderData.payment_details.paymentID) {
-        console.error("No payment ID available for status check");
-        this.handlePaymentFailure("Missing payment information");
-        return;
+        console.error("No payment ID available for status check")
+        this.handlePaymentFailure("Missing payment information")
+        return
       }
-      
-      const paymentId = orderData.payment_details.paymentID;
-      console.log("Starting payment status check for payment ID:", paymentId);
-      
-      this.paymentStatusMessage = 'Waiting for payment confirmation...';
-      this.checkCount = 0;
-      
+
+      const paymentId = orderData.payment_details.paymentID
+      console.log("Starting payment status check for payment ID:", paymentId)
+
+      this.paymentStatusMessage = "Waiting for payment confirmation..."
+      this.checkCount = 0
+
       // Check payment status every 3 seconds
       this.paymentCheckInterval = setInterval(async () => {
         try {
-          this.checkCount++;
-          console.log(`Payment status check #${this.checkCount}`);
-          
+          this.checkCount++
+          console.log(`Payment status check #${this.checkCount}`)
+
           // Use the correct endpoint and payment ID
           const statusResponse = await fetch(`http://localhost:8000/payment/${paymentId}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          })
+
           if (!statusResponse.ok) {
-            throw new Error(`Failed to check payment status: ${statusResponse.status}`);
+            throw new Error(`Failed to check payment status: ${statusResponse.status}`)
           }
-          
-          const statusData = await statusResponse.json();
-          console.log('Payment status check:', statusData);
-          
+
+          const statusData = await statusResponse.json()
+          console.log("Payment status check:", statusData)
+
           // Check payment_status field from the response
-          if (statusData.payment_status === 'successful') {
+          if (statusData.payment_status === "successful") {
             // Payment successful
-            this.handlePaymentSuccess();
-          } else if (statusData.payment_status === 'failed' || 
-                    statusData.payment_status === 'canceled') {
+            this.handlePaymentSuccess()
+          } else if (statusData.payment_status === "failed" || statusData.payment_status === "canceled") {
             // Payment failed
-            this.handlePaymentFailure('Payment was not completed');
+            this.handlePaymentFailure("Payment was not completed")
           } else {
             // Still pending, update the message
-            this.paymentStatusMessage = `Waiting for payment confirmation... (Status: ${statusData.payment_status || 'pending'})`;
-            
+            this.paymentStatusMessage = `Waiting for payment confirmation... (Status: ${statusData.payment_status || "pending"})`
+
             // If we've been checking for a while and still getting pending,
-            // assume success after a certain number of attempts
-            if (this.checkCount >= 5 && statusData.payment_status === 'pending') {
+            // provide feedback but don't assume success
+            if (this.checkCount >= 5 && statusData.payment_status === "pending") {
               // Check if we're on the success URL page
-              const currentUrl = window.location.href;
-              if (currentUrl.includes('payment/') && currentUrl.includes(paymentId)) {
-                console.log("Detected success URL with payment ID, assuming payment successful");
-                this.handlePaymentSuccess();
-                return;
+              const currentUrl = window.location.href
+              if (currentUrl.includes("payment/") && currentUrl.includes(paymentId)) {
+                console.log("Detected success URL with payment ID, assuming payment successful")
+                this.handlePaymentSuccess()
+                return
               }
-              
-              // If we've reached the maximum number of attempts, assume success
+
+              // If we've reached the maximum number of attempts, show timeout message
               if (this.checkCount >= this.maxCheckAttempts) {
-                console.log("Reached maximum check attempts, assuming payment successful");
-                this.handlePaymentSuccess();
-                return;
+                console.log("Reached maximum check attempts, payment status still pending")
+                this.stopPaymentStatusCheck()
+                this.isProcessingPayment = false
+                this.error =
+                  "Payment status could not be confirmed. Please check your order status in your account or contact support."
               }
-              
+
               // Increase the interval after 5 checks to reduce server load
               if (this.checkCount === 5) {
-                clearInterval(this.paymentCheckInterval);
-                console.log("Increasing check interval to 5 seconds");
-                this.paymentCheckInterval = setInterval(this.checkPaymentStatus.bind(this, paymentId), 5000);
+                clearInterval(this.paymentCheckInterval)
+                console.log("Increasing check interval to 5 seconds")
+                this.paymentCheckInterval = setInterval(this.checkPaymentStatus.bind(this, paymentId), 5000)
               }
               // Increase again after 10 checks
               else if (this.checkCount === 10) {
-                clearInterval(this.paymentCheckInterval);
-                console.log("Increasing check interval to 10 seconds");
-                this.paymentCheckInterval = setInterval(this.checkPaymentStatus.bind(this, paymentId), 10000);
+                clearInterval(this.paymentCheckInterval)
+                console.log("Increasing check interval to 10 seconds")
+                this.paymentCheckInterval = setInterval(this.checkPaymentStatus.bind(this, paymentId), 10000)
               }
             }
           }
-          
         } catch (error) {
-          console.error('Error checking payment status:', error);
+          console.error("Error checking payment status:", error)
           // Don't stop checking on error, just log it
         }
-      }, 3000);
-      
+      }, 3000)
+
       // Set a timeout to stop checking after 10 minutes (600000 ms)
       setTimeout(() => {
-        this.stopPaymentStatusCheck();
+        this.stopPaymentStatusCheck()
         if (this.isProcessingPayment) {
-          this.handlePaymentFailure('Payment confirmation timed out. Please check your order status in your account.');
+          this.handlePaymentFailure("Payment confirmation timed out. Please check your order status in your account.")
         }
-      }, 600000);
+      }, 600000)
     },
-    
+
     // Separate method for checking payment status
     async checkPaymentStatus(paymentId) {
       try {
-        console.log(`Payment status check #${this.checkCount}`);
-        this.checkCount++;
-        
+        console.log(`Payment status check #${this.checkCount}`)
+        this.checkCount++
+
         // Use the correct endpoint and payment ID
         const statusResponse = await fetch(`http://localhost:8000/payment/${paymentId}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+
         if (!statusResponse.ok) {
-          throw new Error(`Failed to check payment status: ${statusResponse.status}`);
+          throw new Error(`Failed to check payment status: ${statusResponse.status}`)
         }
-        
-        const statusData = await statusResponse.json();
-        console.log('Payment status check:', statusData);
-        
+
+        const statusData = await statusResponse.json()
+        console.log("Payment status check:", statusData)
+
         // Check payment_status field from the response
-        if (statusData.payment_status === 'successful') {
+        if (statusData.payment_status === "successful") {
           // Payment successful
-          this.handlePaymentSuccess();
-        } else if (statusData.payment_status === 'failed' || 
-                  statusData.payment_status === 'canceled') {
+          this.handlePaymentSuccess()
+        } else if (statusData.payment_status === "failed" || statusData.payment_status === "canceled") {
           // Payment failed
-          this.handlePaymentFailure('Payment was not completed');
+          this.handlePaymentFailure("Payment was not completed")
         } else {
           // Still pending, update the message
-          this.paymentStatusMessage = `Waiting for payment confirmation... (Status: ${statusData.payment_status || 'pending'})`;
-          
+          this.paymentStatusMessage = `Waiting for payment confirmation... (Status: ${statusData.payment_status || "pending"})`
+
           // If we've been checking for a while and still getting pending,
-          // assume success after a certain number of attempts
+          // provide feedback but don't assume success
           if (this.checkCount >= this.maxCheckAttempts) {
-            console.log("Reached maximum check attempts, assuming payment successful");
-            this.handlePaymentSuccess();
+            console.log("Reached maximum check attempts, payment status still pending")
+            this.stopPaymentStatusCheck()
+            this.isProcessingPayment = false
+            this.error =
+              "Payment status could not be confirmed. Please check your order status in your account or contact support."
           }
         }
-        
       } catch (error) {
-        console.error('Error checking payment status:', error);
+        console.error("Error checking payment status:", error)
         // Don't stop checking on error, just log it
       }
     },
-    
+
     stopPaymentStatusCheck() {
       if (this.paymentCheckInterval) {
-        clearInterval(this.paymentCheckInterval);
-        this.paymentCheckInterval = null;
+        clearInterval(this.paymentCheckInterval)
+        this.paymentCheckInterval = null
+      }
+
+      if (this.windowCheckInterval) {
+        clearInterval(this.windowCheckInterval)
+        this.windowCheckInterval = null
       }
     },
-    
+
     handlePaymentSuccess() {
-      this.stopPaymentStatusCheck();
-      this.isProcessingPayment = false;
-      
+      this.stopPaymentStatusCheck()
+      this.isProcessingPayment = false
+
       // Show success message
-      this.toastMessage = "Payment successful! Your order has been placed.";
-      this.showToast = true;
-      
+      this.toastMessage = "Payment successful! Your order has been placed."
+      this.showToast = true
+
       // Redirect to rewards page if missions were completed
       if (this.hasPurchaseMission) {
         setTimeout(() => {
-          window.location.href = '/rewards?missionCompleted=true';
-        }, 2000);
+          window.location.href = "/rewards?missionCompleted=true"
+        }, 2000)
       } else {
         // Just reload the page to refresh the cart
         setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+          window.location.reload()
+        }, 2000)
       }
     },
-    
+
     handlePaymentFailure(message) {
-      this.stopPaymentStatusCheck();
-      this.isProcessingPayment = false;
-      
+      this.stopPaymentStatusCheck()
+      this.isProcessingPayment = false
+
       // Show error message
-      this.error = `Payment failed: ${message}`;
-      
+      this.error = `Payment failed: ${message}`
+
       // Show toast notification
-      this.toastMessage = "Payment was not completed. Please try again.";
-      this.showToast = true;
+      this.toastMessage = "Payment was not completed. Please try again."
+      this.showToast = true
       setTimeout(() => {
-        this.showToast = false;
-      }, 5000);
+        this.showToast = false
+      }, 5000)
     },
-    
+
     async increaseQuantity(index) {
-      const item = this.cartItems[index];
-      
+      const item = this.cartItems[index]
+
       try {
         // First update the UI optimistically
-        this.cartItems[index].quantity += 1;
-        
+        this.cartItems[index].quantity += 1
+
         // Then connect to the specified backend endpoint
-        const response = await fetch('http://localhost:5300/cart-product/add', {
-          method: 'POST',
+        const response = await fetch("http://localhost:5300/cart-product/add", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             userID: this.userId, // Default userID as specified
             productId: item.productId,
-            quantity: 1 // Just increment by 1 as backend handles the logic
-          })
-        });
+            quantity: 1, // Just increment by 1 as backend handles the logic
+          }),
+        })
 
         if (!response.ok) {
-          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`);
+          console.warn(`Failed to update server cart: ${response.status} ${response.statusText}`)
           // Revert the optimistic update if the server request fails
-          this.cartItems[index].quantity -= 1;
-          return false;
+          this.cartItems[index].quantity -= 1
+          return false
         }
 
-        const data = await response.json();
-        console.log('Server cart updated successfully:', data);
-        return true;
+        const data = await response.json()
+        console.log("Server cart updated successfully:", data)
+        return true
       } catch (error) {
-        console.error('Error updating cart:', error);
+        console.error("Error updating cart:", error)
         // Revert the optimistic update if the request fails
-        this.cartItems[index].quantity -= 1;
-        return false;
+        this.cartItems[index].quantity -= 1
+        return false
       }
     },
-    
+
     async fetchActiveMissions() {
       try {
         // Fetch user's active missions
-        const response = await fetch(`http://localhost:5403/mission/status/${this.userId}`);
-        
+        const response = await fetch(`http://localhost:5403/mission/status/${this.userId}`)
+
         if (!response.ok) {
-          console.error('Failed to fetch missions:', response.status);
-          return;
+          console.error("Failed to fetch missions:", response.status)
+          return
         }
-        
-        const missions = await response.json();
-        this.activeMissions = missions;
-        
+
+        const missions = await response.json()
+        this.activeMissions = missions
+
         // Check for purchase mission type
         this.hasPurchaseMission = missions.some(
-          mission => mission.event_type === 'purchase_product' && 
-                    !mission.completed && 
-                    !mission.claimed
-        );
+          (mission) => mission.event_type === "purchase_product" && !mission.completed && !mission.claimed,
+        )
       } catch (error) {
-        console.error('Error fetching active missions:', error);
+        console.error("Error fetching active missions:", error)
       }
     },
-    
+
     async updateMissionProgress(eventType) {
       try {
         // Call the mission update API
         const response = await fetch(`http://localhost:5403/mission/update`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             user_id: this.userId,
-            event_type: eventType
-          })
-        });
-        
+            event_type: eventType,
+          }),
+        })
+
         if (!response.ok) {
-          console.error(`Failed to update mission progress: ${response.status}`);
-          return false;
+          console.error(`Failed to update mission progress: ${response.status}`)
+          return false
         }
-        
-        console.log(`Mission progress updated for ${eventType}`);
-        return true;
-        
+
+        console.log(`Mission progress updated for ${eventType}`)
+        return true
       } catch (error) {
-        console.error('Error updating mission progress:', error);
-        return false;
+        console.error("Error updating mission progress:", error)
+        return false
       }
-    }
+    },
+
+    monitorPaymentWindow(paymentWindow, paymentId) {
+      // Check if the window was closed
+      const checkWindowClosed = setInterval(() => {
+        if (paymentWindow.closed) {
+          console.log("Payment window was closed by user")
+          clearInterval(checkWindowClosed)
+
+          // Check if payment is still processing
+          if (this.isProcessingPayment) {
+            // If we're still processing, assume the user cancelled
+            this.handlePaymentFailure("Payment was cancelled or window was closed")
+          }
+        }
+      }, 1000)
+
+      // Store the interval ID so we can clear it later
+      this.windowCheckInterval = checkWindowClosed
+    },
+
+    handleWindowFocus() {
+      // If we're still processing payment and the user comes back to this window
+      // it likely means they abandoned the payment
+      if (this.isProcessingPayment && this.paymentId) {
+        console.log("User returned to the page while payment was processing")
+
+        // Check payment status one more time before assuming cancellation
+        this.checkPaymentStatusOnce(this.paymentId).then((status) => {
+          if (status === "pending") {
+            this.handlePaymentFailure("Payment appears to be abandoned")
+          }
+        })
+      }
+    },
+
+    async checkPaymentStatusOnce(paymentId) {
+      try {
+        const statusResponse = await fetch(`http://localhost:8000/payment/${paymentId}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+
+        if (!statusResponse.ok) {
+          return "error"
+        }
+
+        const statusData = await statusResponse.json()
+        return statusData.payment_status || "pending"
+      } catch (error) {
+        console.error("Error checking payment status:", error)
+        return "error"
+      }
+    },
   },
   mounted() {
     // Fetch cart items and recommendations when the component is mounted
-    this.fetchCartItems();
-    this.fetchRecommendations();
-    this.fetchActiveMissions();
-    
+    this.fetchCartItems()
+    this.fetchRecommendations()
+    this.fetchActiveMissions()
+
     // Check if we're returning from a payment (URL contains a session_id parameter)
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
+    const urlParams = new URLSearchParams(window.location.search)
+    const sessionId = urlParams.get("session_id")
     if (sessionId) {
-      console.log("Detected return from payment with session ID:", sessionId);
-      
+      console.log("Detected return from payment with session ID:", sessionId)
+
       // If we have a session ID in the URL, we can assume the payment was successful
       // This handles the case where the user is redirected back before the webhook fires
-      this.paymentId = sessionId;
-      this.isProcessingPayment = true;
-      this.paymentStatusMessage = 'Verifying payment...';
-      
+      this.paymentId = sessionId
+      this.isProcessingPayment = true
+      this.paymentStatusMessage = "Verifying payment..."
+
       // Start checking payment status
       this.startPaymentStatusCheck({
         payment_details: {
-          paymentID: sessionId
-        }
-      });
+          paymentID: sessionId,
+        },
+      })
     }
+
+    window.addEventListener("focus", this.handleWindowFocus)
   },
   beforeUnmount() {
     // Clean up interval when component is destroyed
-    this.stopPaymentStatusCheck();
-  }
+    this.stopPaymentStatusCheck()
+
+    // Remove event listener
+    window.removeEventListener("focus", this.handleWindowFocus)
+  },
 }
+
+
 </script>
 
 <script setup>
