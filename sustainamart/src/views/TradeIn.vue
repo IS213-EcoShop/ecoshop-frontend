@@ -131,10 +131,10 @@
                   <div class="select-wrapper">
                     <select id="condition" v-model="form.condition" required>
                       <option value="">Select condition</option>
-                      <option value="excellent">Excellent</option>
-                      <option value="good">Good</option>
-                      <option value="fair">Fair</option>
-                      <option value="poor">Poor</option>
+                      <option value="Excellent">Excellent</option>
+                      <option value="Good">Good</option>
+                      <option value="Fair">Fair</option>
+                      <option value="Poor">Poor</option>
                     </select>
                     <ChevronDownIcon size="18" class="select-icon" />
                   </div>
@@ -456,7 +456,7 @@ const form = reactive({
   address: 'Toh Guan Rd Blk 394 #05-12',
   productName: 'shirt',
   description: 'pantagonia shirt',
-  condition: 'good'
+  condition: 'Good'
 });
 
 // Image upload handling
@@ -480,7 +480,7 @@ const tradeIns = ref([
   {
     id: 1,
     productName: "Eco-friendly Bamboo Chair",
-    condition: "good",
+    condition: "Good",
     status: "Pending",
     submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
     image: "/bamboo.png",
@@ -488,7 +488,7 @@ const tradeIns = ref([
   {
     id: 2,
     productName: "Asgaard Sofa",
-    condition: "excellent",
+    condition: "Excellent",
     status: "Accepted",
     submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
     image: "/sofa.png",
@@ -496,7 +496,7 @@ const tradeIns = ref([
   {
     id: 3,
     productName: "Recycled Cotton T-shirt",
-    condition: "fair",
+    condition: "Fair",
     status: "Rejected",
     submittedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
     image: "/shirt.png",
