@@ -304,34 +304,6 @@ const leaderboardInterval = ref(null)
 const walletInterval = ref(null)
 const missionCheckInterval = ref(null)
 
-// Check for URL parameters indicating mission completion or purchase success
-const checkUrlForMissionCompletion = () => {
-  const urlParams = new URLSearchParams(window.location.search)
-  const missionCompleted = urlParams.get("missionCompleted")
-  const purchaseSuccess = urlParams.get("purchaseSuccess")
-
-  if (missionCompleted === "true") {
-    // Clear the URL parameter without refreshing the page
-    const newUrl = window.location.pathname
-    window.history.replaceState({}, document.title, newUrl)
-  }
-
-  if (purchaseSuccess === "true") {
-    // Show purchase success notification
-    showPurchaseSuccess.value = true
-    setTimeout(() => {
-      showPurchaseSuccess.value = false
-    }, 5000)
-    
-    // Clear the URL parameter without refreshing the page
-    const newUrl = window.location.pathname
-    window.history.replaceState({}, document.title, newUrl)
-    
-    // Refresh mission data to show updated progress
-    fetchJoinedMissions()
-  }
-}
-
 // Function to check if this is a fresh session and clear missions if needed
 const checkAndClearSession = () => {
   // Get the app start time from localStorage
@@ -456,7 +428,7 @@ const fetchLeaderboardData = async () => {
     if (!currentUserFound) {
       leaderboard.push({
         id: userId.value,
-        username: "user",
+        username: "user200", // Changed from "You" to "user200"
         points: userPoints.value,
         isCurrentUser: true,
       })
@@ -466,8 +438,6 @@ const fetchLeaderboardData = async () => {
     return data
   } catch (error) {
     console.error("Error fetching leaderboard data:", error)
-    // Don't set the error state here to avoid blocking the UI
-    // if only the leaderboard fetch fails
     return null
   }
 }
@@ -501,8 +471,6 @@ const fetchAvailableVouchers = async () => {
     return data
   } catch (error) {
     console.error("Error fetching voucher templates:", error)
-    // Don't set the error state here to avoid blocking the UI
-    // if only the vouchers fetch fails
     return null
   }
 }
@@ -735,65 +703,18 @@ const checkForMissionUpdates = async () => {
   }
 }
 
-// Function to fetch all data
-const fetchAllData = async () => {
-  isLoading.value = true
-  error.value = null
-
-  try {
-    // Check if we need to fetch joined missions
-    const shouldClearMissions = checkAndClearSession()
-
-    // Fetch all data in parallel
-    const results = await Promise.all([
-      fetchWalletData(),
-      fetchLeaderboardData(),
-      fetchAvailableVouchers(),
-      fetchAvailableMissions(),
-    ])
-
-    // Only fetch joined missions if we're not clearing them
-    if (!shouldClearMissions) {
-      await fetchJoinedMissions()
-    }
-
-    // Check if any of the fetches failed
-    const anyFailed = results.some((result) => result === null)
-
-    if (anyFailed) {
-      console.warn("Some data fetches failed, but continuing with available data")
-    }
-  } catch (err) {
-    error.value = err.message || "Failed to load data"
-    console.error("Error fetching all data:", err)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Add a helper function to get mission instructions
-const getMissionInstruction = (eventType) => {
-  switch (eventType) {
-    case "purchase_eco_product":
-      return "To complete: Purchase an eco-friendly product and proceed to checkout"
-    case "recycle_item":
-      return "To complete: Recycle an item at a collection point"
-    case "reduce_carbon":
-      return "To complete: Use eco-friendly shipping option at checkout"
-    case "trade_in":
-      return "To complete: Trade in an old item on the Trade-In page"
-    case "checkout_completed":
-    case "purchase_product":
-    case "ECO_PURCHASE":
-      return "To complete: Finish a purchase by proceeding to checkout"
-    default:
-      return "To complete: Follow the mission requirements"
-  }
-}
-
-// Function to manually trigger mission update (for testing)
+// Replace the triggerMissionUpdate function with this updated version
 const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
   try {
+    // Check if we already have a mission update in progress to prevent double calls
+    if (window.missionUpdateInProgress) {
+      console.log("Mission update already in progress, skipping duplicate call")
+      return
+    }
+    
+    // Set flag to prevent concurrent updates
+    window.missionUpdateInProgress = true
+    
     const response = await fetch(`http://localhost:5403/mission/update`, {
       method: "POST",
       headers: {
@@ -811,6 +732,7 @@ const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
     
     // Get the response data
     const result = await response.json()
+    console.log("Mission update result:", result)
     
     // Refresh mission data
     await fetchJoinedMissions()
@@ -820,6 +742,7 @@ const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
     
     // Check if a mission was completed
     if (result.mission_completed) {
+      console.log("Mission completed:", result.mission_id)
       // Fetch the completed mission details
       const missionResponse = await fetch(`http://localhost:5403/mission/status/${userId.value}`)
       if (missionResponse.ok) {
@@ -834,8 +757,15 @@ const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
     }
     
     console.log("Mission update triggered successfully")
+    
+    // Clear the flag after a short delay to prevent rapid consecutive calls
+    setTimeout(() => {
+      window.missionUpdateInProgress = false
+    }, 2000)
   } catch (error) {
     console.error("Error triggering mission update:", error)
+    // Clear the flag in case of error
+    window.missionUpdateInProgress = false
   }
 }
 
@@ -892,7 +822,7 @@ const joinMission = async (mission) => {
   }
 }
 
-// Function to redeem a voucher
+// Modify the redeemVoucher function to store the voucher in localStorage
 const redeemVoucher = async (voucher) => {
   try {
     // Check if user has enough points
@@ -923,8 +853,30 @@ const redeemVoucher = async (voucher) => {
       throw new Error(`Failed to redeem voucher: ${response.status}`)
     }
 
+    // Get the response data to get the voucher details
+    const responseData = await response.json()
+    console.log("Voucher redemption response:", responseData)
+
     // Add to redeemed vouchers list to hide it immediately
     redeemedVoucherIds.value.push(voucher.id)
+
+    // Store the voucher in localStorage for cart page to access
+    const voucherForCart = {
+      id: responseData.voucher_id || voucher.id,
+      title: voucher.title,
+      description: voucher.description,
+      amount: voucher.amount,
+      code: responseData.code || `VOUCHER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+      expiryDate: responseData.expiry_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    }
+    
+    // Store the active voucher in localStorage
+    localStorage.setItem('activeVoucher', JSON.stringify(voucherForCart))
+    
+    // Dispatch a custom event for other components to listen for
+    window.dispatchEvent(new CustomEvent('voucher-redeemed', { 
+      detail: voucherForCart 
+    }))
 
     // Refresh wallet data to get updated points and vouchers
     await fetchWalletData()
@@ -947,7 +899,7 @@ const redeemVoucher = async (voucher) => {
   }
 }
 
-// Function to use a voucher
+// Modify the useVoucher function to update localStorage
 const useVoucher = async (voucher) => {
   try {
     // Call the API to use the voucher
@@ -965,6 +917,24 @@ const useVoucher = async (voucher) => {
     if (!response.ok) {
       throw new Error(`Failed to use voucher: ${response.status}`)
     }
+
+    // Store the voucher in localStorage for cart page to access
+    const voucherForCart = {
+      id: voucher.id,
+      title: voucher.title,
+      description: voucher.description || voucher.amount,
+      amount: voucher.amount || parseFloat(voucher.description.replace(/[^0-9.]/g, '')),
+      code: voucher.code || `VOUCHER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+      expiryDate: voucher.expiryDate
+    }
+    
+    // Store the active voucher in localStorage
+    localStorage.setItem('activeVoucher', JSON.stringify(voucherForCart))
+    
+    // Dispatch a custom event for other components to listen for
+    window.dispatchEvent(new CustomEvent('voucher-redeemed', { 
+      detail: voucherForCart 
+    }))
 
     // Show voucher applied notification
     showVoucherApplied.value = true
@@ -1005,6 +975,47 @@ const closePopup = () => {
   }, 50)
 }
 
+// Function to get mission instruction based on event type
+const getMissionInstruction = (eventType) => {
+  switch (eventType) {
+    case "ECO_PURCHASE":
+      return "Make an eco-friendly purchase to complete this mission."
+    case "RECYCLE":
+      return "Recycle items to complete this mission."
+    case "REDUCE_WASTE":
+      return "Reduce waste to complete this mission."
+    default:
+      return "Complete the required action to finish this mission."
+  }
+}
+
+// Function to fetch all data
+const fetchAllData = async () => {
+  isLoading.value = true
+  error.value = null
+
+  try {
+    // Check if this is a fresh session and clear missions if needed
+    const isNewAppStart = checkAndClearSession()
+
+    // Fetch all data in parallel
+    await Promise.all([
+      fetchAvailableMissions(),
+      fetchJoinedMissions(),
+      fetchLeaderboardData(),
+      fetchWalletData(),
+      fetchAvailableVouchers(),
+    ])
+
+    console.log("All data fetched successfully")
+  } catch (err) {
+    error.value = err.message || "Failed to fetch data"
+    console.error("Error fetching data:", err)
+  } finally {
+    isLoading.value = false
+  }
+}
+
 // Set up polling for leaderboard, wallet data, and mission updates
 const setupPolling = () => {
   // Poll leaderboard every 30 seconds
@@ -1032,6 +1043,26 @@ const cleanupPolling = () => {
   }
 }
 
+// Function to check for URL parameters indicating mission completion
+const checkUrlForMissionCompletion = () => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const missionCompleted = urlParams.get('mission_completed')
+  const missionId = urlParams.get('mission_id')
+
+  if (missionCompleted === 'true' && missionId) {
+    // Find the completed mission
+    const completedMission = joinedMissions.value.find(mission => mission.mission_id === parseInt(missionId))
+
+    if (completedMission) {
+      // Show mission completed popup
+      showMissionCompletedPopup(completedMission)
+    }
+
+    // Clear the URL parameters
+    window.history.replaceState({}, document.title, window.location.pathname)
+  }
+}
+
 // Initialize component
 onMounted(() => {
   // Check for URL parameters indicating mission completion
@@ -1043,11 +1074,23 @@ onMounted(() => {
   // Set up polling
   setupPolling()
   
-  // Listen for purchase events from other pages
+  // Also update the storage event listener in the onMounted function
+  // Replace the existing storage event listener with this one
   window.addEventListener('storage', (event) => {
     if (event.key === 'purchase_completed') {
+      console.log("Purchase completed event detected")
+      // Get the event data
+      let eventData = { event_type: 'ECO_PURCHASE' }
+      try {
+        if (event.newValue) {
+          eventData = JSON.parse(event.newValue)
+        }
+      } catch (e) {
+        console.error("Error parsing purchase event data:", e)
+      }
+      
       // Trigger mission update for purchase event
-      triggerMissionUpdate('ECO_PURCHASE')
+      triggerMissionUpdate(eventData.event_type || 'ECO_PURCHASE')
       
       // Clear the storage item
       localStorage.removeItem('purchase_completed')

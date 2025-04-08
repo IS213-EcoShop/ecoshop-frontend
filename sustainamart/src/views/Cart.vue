@@ -50,6 +50,14 @@
                 <p>Complete your purchase to earn points!</p>
               </div>
             </div>
+
+            <!-- Voucher Applied Notification -->
+            <div v-if="showVoucherApplied" class="toast show">
+              <div class="toast-content">
+                <check-circle-icon class="toast-icon" />
+                <span>Voucher applied!</span>
+              </div>
+            </div>
             
             <div class="cart-items">
               <div v-for="(item, index) in cartItems" :key="item.productId" class="cart-item">
@@ -85,9 +93,13 @@
             </div>
 
             <div class="cart-summary">
+              <div v-if="activeVoucher" class="voucher-info">
+                <span>Voucher Discount:</span>
+                <span>-${{ voucherDiscount.toFixed(2) }}</span>
+              </div>
               <div class="subtotal">
-                <span>Subtotal:</span>
-                <span>${{ calculateSubtotal().toFixed(2) }}</span>
+                <span>Total:</span>
+                <span>${{ calculateTotal().toFixed(2) }}</span>
               </div>
             </div>
 
@@ -96,10 +108,15 @@
                 <arrow-left-icon size="16" />
                 Continue Shopping
               </a>
-              <button @click="checkout" class="checkout-btn" :disabled="isProcessingPayment">
-                <credit-card-icon size="16" />
-                {{ isProcessingPayment ? 'Processing...' : 'Proceed to Checkout' }}
-              </button>
+              <div class="checkout-buttons">
+                <button v-if="activeVoucher" @click="removeVoucher" class="remove-voucher-btn">
+                  Remove Voucher
+                </button>
+                <button @click="checkout" class="checkout-btn" :disabled="isProcessingPayment">
+                  <credit-card-icon size="16" />
+                  {{ isProcessingPayment ? 'Processing...' : 'Proceed to Checkout' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -179,6 +196,10 @@ export default {
       activeMissions: [],
       hasPurchaseMission: false,
       windowCheckInterval: null,
+      // New properties for voucher handling
+      activeVoucher: null,
+      voucherDiscount: 0,
+      showVoucherApplied: false,
     }
   },
   methods: {
@@ -449,7 +470,60 @@ export default {
     },
 
     calculateSubtotal() {
-      return this.cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
+      const subtotal = this.cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
+      return subtotal
+    },
+
+    // Add this new method to load voucher from localStorage
+    loadActiveVoucher() {
+      try {
+        const storedVoucher = localStorage.getItem('activeVoucher')
+        if (storedVoucher) {
+          this.activeVoucher = JSON.parse(storedVoucher)
+          this.voucherDiscount = parseFloat(this.activeVoucher.amount) || 0
+          
+          // Show voucher applied notification if we just arrived from rewards page
+          const fromRewards = localStorage.getItem('fromRewardsPage')
+          if (fromRewards) {
+            this.showVoucherApplied = true
+            setTimeout(() => {
+              this.showVoucherApplied = false
+            }, 3000)
+            localStorage.removeItem('fromRewardsPage')
+          }
+          
+          console.log("Loaded active voucher:", this.activeVoucher)
+        }
+      } catch (error) {
+        console.error("Error loading voucher from localStorage:", error)
+      }
+    },
+    
+    // Add this method to remove the voucher
+    removeVoucher() {
+      this.activeVoucher = null
+      this.voucherDiscount = 0
+      localStorage.removeItem('activeVoucher')
+      
+      // Show toast notification
+      this.toastMessage = "Voucher removed from cart"
+      this.showToast = true
+      setTimeout(() => {
+        this.showToast = false
+      }, 3000)
+    },
+    
+    // Add a new method to calculate the final total after voucher discount
+    calculateTotal() {
+      const subtotal = this.calculateSubtotal()
+      let total = subtotal
+      
+      // Apply voucher discount if available
+      if (this.activeVoucher && this.voucherDiscount > 0) {
+        total = Math.max(0, subtotal - this.voucherDiscount)
+      }
+      
+      return total
     },
 
     async checkout() {
@@ -467,11 +541,25 @@ export default {
           await this.updateMissionProgress("purchase_product")
         }
 
+        // Prepare checkout data including voucher if available
+        const checkoutData = { 
+          userID: this.userId 
+        }
+        
+        // Add voucher information if available
+        if (this.activeVoucher) {
+          checkoutData.voucher = {
+            id: this.activeVoucher.id,
+            code: this.activeVoucher.code,
+            amount: this.activeVoucher.amount
+          }
+        }
+
         // Place order via microservice
         const placeOrderResponse = await fetch("http://127.0.0.1:8000/place_order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userID: this.userId }),
+          body: JSON.stringify(checkoutData),
         })
 
         if (!placeOrderResponse.ok) {
@@ -540,6 +628,19 @@ export default {
         this.error = `Checkout error: ${error.message}`
         this.isProcessingPayment = false
       }
+    },
+    
+    // Add a handler for the voucher-redeemed event
+    handleVoucherRedeemed(event) {
+      console.log("Voucher redeemed event received:", event.detail)
+      this.activeVoucher = event.detail
+      this.voucherDiscount = parseFloat(this.activeVoucher.amount) || 0
+      
+      // Show voucher applied notification
+      this.showVoucherApplied = true
+      setTimeout(() => {
+        this.showVoucherApplied = false
+      }, 3000)
     },
 
     startPaymentStatusCheck(orderData) {
@@ -914,6 +1015,12 @@ export default {
     this.fetchCartItems()
     this.fetchRecommendations()
     this.fetchActiveMissions()
+    
+    // Load active voucher from localStorage
+    this.loadActiveVoucher()
+    
+    // Listen for voucher-redeemed events
+    window.addEventListener('voucher-redeemed', this.handleVoucherRedeemed)
 
     // Check if we're returning from a payment (URL contains a session_id parameter)
     const urlParams = new URLSearchParams(window.location.search)
@@ -941,8 +1048,9 @@ export default {
     // Clean up interval when component is destroyed
     this.stopPaymentStatusCheck()
 
-    // Remove event listener
+    // Remove event listeners
     window.removeEventListener("focus", this.handleWindowFocus)
+    window.removeEventListener('voucher-redeemed', this.handleVoucherRedeemed)
   },
 }
 
@@ -1569,5 +1677,44 @@ button {
   .recommendations-list {
     grid-template-columns: 1fr;
   }
+}
+
+/* Voucher Styles */
+.voucher-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 500;
+  color: #388e3c;
+  margin-top: 8px;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 16px;
+}
+
+.remove-voucher-btn {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.remove-voucher-btn:hover {
+  background-color: #b71c1c;
+}
+
+.checkout-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 </style>
