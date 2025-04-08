@@ -569,6 +569,16 @@ const fetchJoinedMissions = async () => {
 
 // Function to show mission completed popup
 const showMissionCompletedPopup = (mission) => {
+  // Check if we've already shown a popup for this mission in this session
+  const missionPopupShown = sessionStorage.getItem(`mission_popup_${mission.mission_id}`)
+  if (missionPopupShown) {
+    console.log(`Popup for mission ${mission.mission_id} already shown, not showing again`)
+    return
+  }
+  
+  // Mark this mission popup as shown in this session
+  sessionStorage.setItem(`mission_popup_${mission.mission_id}`, 'true')
+  
   // Set popup data
   popupData.title = "Mission Completed!"
   popupData.message = `Congratulations! You've completed the "${mission.name}" mission and earned ${mission.reward_points} points!`
@@ -704,6 +714,8 @@ const checkForMissionUpdates = async () => {
 }
 
 // Replace the triggerMissionUpdate function with this updated version
+// that has better protection against duplicate calls
+
 const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
   try {
     // Check if we already have a mission update in progress to prevent double calls
@@ -714,6 +726,14 @@ const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
     
     // Set flag to prevent concurrent updates
     window.missionUpdateInProgress = true
+    console.log("Setting mission update in progress flag")
+    
+    // Add a timestamp to track when this update started
+    const updateStartTime = Date.now()
+    window.lastMissionUpdateTime = updateStartTime
+    
+    // Log the event type being processed
+    console.log(`Processing mission update for event type: ${eventType}`)
     
     const response = await fetch(`http://localhost:5403/mission/update`, {
       method: "POST",
@@ -734,6 +754,12 @@ const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
     const result = await response.json()
     console.log("Mission update result:", result)
     
+    // Only proceed if this is still the most recent update
+    if (window.lastMissionUpdateTime !== updateStartTime) {
+      console.log("A newer mission update has been initiated, abandoning this one")
+      return
+    }
+    
     // Refresh mission data
     await fetchJoinedMissions()
     
@@ -743,25 +769,46 @@ const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
     // Check if a mission was completed
     if (result.mission_completed) {
       console.log("Mission completed:", result.mission_id)
-      // Fetch the completed mission details
-      const missionResponse = await fetch(`http://localhost:5403/mission/status/${userId.value}`)
-      if (missionResponse.ok) {
-        const missions = await missionResponse.json()
-        const completedMission = missions.find(m => m.mission_id === result.mission_id)
+      
+      // Check if we've already shown a popup for this mission recently
+      const recentlyCompletedMissions = JSON.parse(localStorage.getItem('recentlyCompletedMissions') || '[]')
+      const missionAlreadyCompleted = recentlyCompletedMissions.includes(result.mission_id)
+      
+      if (!missionAlreadyCompleted) {
+        // Add this mission to recently completed list
+        recentlyCompletedMissions.push(result.mission_id)
+        localStorage.setItem('recentlyCompletedMissions', JSON.stringify(recentlyCompletedMissions))
         
-        if (completedMission) {
-          // Show mission completed popup
-          showMissionCompletedPopup(completedMission)
+        // Fetch the completed mission details
+        const missionResponse = await fetch(`http://localhost:5403/mission/status/${userId.value}`)
+        if (missionResponse.ok) {
+          const missions = await missionResponse.json()
+          const completedMission = missions.find(m => m.mission_id === result.mission_id)
+          
+          if (completedMission) {
+            // Show mission completed popup
+            showMissionCompletedPopup(completedMission)
+          }
         }
+        
+        // Clear the recently completed missions after 5 minutes
+        setTimeout(() => {
+          localStorage.setItem('recentlyCompletedMissions', JSON.stringify([]))
+        }, 5 * 60 * 1000)
+      } else {
+        console.log("Mission already marked as completed recently, not showing popup again")
       }
     }
     
     console.log("Mission update triggered successfully")
     
-    // Clear the flag after a short delay to prevent rapid consecutive calls
+    // Clear the flag after a delay to prevent rapid consecutive calls
     setTimeout(() => {
-      window.missionUpdateInProgress = false
-    }, 2000)
+      if (window.lastMissionUpdateTime === updateStartTime) {
+        console.log("Clearing mission update in progress flag")
+        window.missionUpdateInProgress = false
+      }
+    }, 5000) // Increased to 5 seconds for better protection
   } catch (error) {
     console.error("Error triggering mission update:", error)
     // Clear the flag in case of error
@@ -1043,22 +1090,22 @@ const cleanupPolling = () => {
   }
 }
 
-// Function to check for URL parameters indicating mission completion
 const checkUrlForMissionCompletion = () => {
+  // Get the URL parameters
   const urlParams = new URLSearchParams(window.location.search)
-  const missionCompleted = urlParams.get('mission_completed')
-  const missionId = urlParams.get('mission_id')
 
-  if (missionCompleted === 'true' && missionId) {
-    // Find the completed mission
-    const completedMission = joinedMissions.value.find(mission => mission.mission_id === parseInt(missionId))
+  // Check if the 'mission_completed' parameter exists
+  if (urlParams.has('mission_completed')) {
+    // Get the mission ID from the parameter
+    const missionId = urlParams.get('mission_completed')
 
-    if (completedMission) {
-      // Show mission completed popup
-      showMissionCompletedPopup(completedMission)
-    }
+    // Log the mission ID
+    console.log(`Mission completed: ${missionId}`)
 
-    // Clear the URL parameters
+    // Remove the 'mission_completed' parameter from the URL
+    urlParams.delete('mission_completed')
+
+    // Replace the current URL with the updated URL
     window.history.replaceState({}, document.title, window.location.pathname)
   }
 }
@@ -1077,25 +1124,41 @@ onMounted(() => {
   // Also update the storage event listener in the onMounted function
   // Replace the existing storage event listener with this one
   window.addEventListener('storage', (event) => {
-    if (event.key === 'purchase_completed') {
-      console.log("Purchase completed event detected")
-      // Get the event data
-      let eventData = { event_type: 'ECO_PURCHASE' }
-      try {
-        if (event.newValue) {
-          eventData = JSON.parse(event.newValue)
-        }
-      } catch (e) {
-        console.error("Error parsing purchase event data:", e)
-      }
-      
-      // Trigger mission update for purchase event
-      triggerMissionUpdate(eventData.event_type || 'ECO_PURCHASE')
-      
-      // Clear the storage item
-      localStorage.removeItem('purchase_completed')
+  if (event.key === 'purchase_completed') {
+    console.log("Purchase completed event detected")
+    
+    // Prevent duplicate processing
+    const purchaseId = event.newValue ? JSON.parse(event.newValue).purchaseId : null
+    const processedPurchases = JSON.parse(localStorage.getItem('processedPurchases') || '[]')
+    
+    if (purchaseId && processedPurchases.includes(purchaseId)) {
+      console.log(`Purchase ${purchaseId} already processed, skipping`)
+      return
     }
-  })
+    
+    // Add to processed purchases
+    if (purchaseId) {
+      processedPurchases.push(purchaseId)
+      localStorage.setItem('processedPurchases', JSON.stringify(processedPurchases))
+    }
+    
+    // Get the event data
+    let eventData = { event_type: 'ECO_PURCHASE' }
+    try {
+      if (event.newValue) {
+        eventData = JSON.parse(event.newValue)
+      }
+    } catch (e) {
+      console.error("Error parsing purchase event data:", e)
+    }
+    
+    // Trigger mission update for purchase event
+    triggerMissionUpdate(eventData.event_type || 'ECO_PURCHASE')
+    
+    // Clear the storage item
+    localStorage.removeItem('purchase_completed')
+  }
+})
 })
 
 // Clean up when component is unmounted
