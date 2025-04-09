@@ -201,10 +201,10 @@
               <div class="card-header">
                 <h4>{{ item.product_name }}</h4>
                 <div class="status-badge" :class="getStatusClass(item.status)">
-                  <span v-if="item.status === 'Pending'" class="status-icon"><ClockIcon size="14" /></span>
-                  <span v-else-if="item.status === 'Accepted'" class="status-icon"><CheckIcon size="14" /></span>
-                  <span v-else-if="item.status === 'Rejected'" class="status-icon"><XIcon size="14" /></span>
-                  <span v-else-if="item.status === 'Claimed'" class="status-icon"><TrophyIcon size="14" /></span>
+                  <span v-if="item.status?.toLowerCase().includes('pend')" class="status-icon"><ClockIcon size="14" /></span>
+                  <span v-else-if="item.status?.toLowerCase().includes('accept')" class="status-icon"><CheckIcon size="14" /></span>
+                  <span v-else-if="item.status?.toLowerCase().includes('reject')" class="status-icon"><XIcon size="14" /></span>
+                  <span v-else-if="item.status?.toLowerCase().includes('claim')" class="status-icon"><TrophyIcon size="14" /></span>
                   {{ item.status }}
                 </div>
               </div>
@@ -222,7 +222,8 @@
                     <span class="label">Condition:</span>
                     <span class="value">{{ item.condition }}</span>
                   </div>
-                  <div v-if="item.status === 'Accepted' || item.status === 'Claimed'" class="detail-row points-row">
+    
+                  <div v-if="item.status === 'Accepted' || item.status === 'accepted'" class="detail-row points-row">
                     <span class="label">Reward:</span>
                     <span class="points-badge beige-box value">
                       <TrophyIcon size="16" />
@@ -241,8 +242,9 @@
                   <EyeIcon size="16" class="btn-icon" />
                   View Details
                 </button>
+                
                 <button 
-                  v-if="item.status === 'Accepted'" 
+                  v-if="item.status === 'Accepted' || item.status === 'accepted'"
                   class="action-btn beige-box"
                   @click="claimRewardPoints(item, index)"
                 >
@@ -445,12 +447,12 @@ const isSubmitting = ref(false);
 
 // Form data with autofilled personal information
 const form = reactive({
-  fullName: 'Charlie Yeo',
-  email: 'charlieyeo00@gmail.com',
+  fullName: 'Ling Xiao',
+  email: 'lxjiang@smu.edu.sg',
   phone: '94843940',
   address: 'Toh Guan Rd Blk 394 #05-12',
-  productName: 'shirt',
-  description: 'pantagonia shirt',
+  productName: 'Shirt',
+  description: 'Pantagonia Shirt',
   condition: 'Good'
 });
 
@@ -575,20 +577,6 @@ const submitTradeIn = async () => {
     const data = await response.json();
     console.log('Trade-in submitted successfully:', data);
     
-
-    // Add the new trade-in to the history
-    const newTradeIn = {
-      id: data.trade_id || Date.now(), // Use the ID from the API or generate a timestamp
-      product_name: form.productName,
-      condition: form.condition,
-      status: "Pending",
-      created_at: new Date().toISOString(),
-      image_url: data.image_url || imagePreviewUrls.value[0], // Use the image URL from the API or the preview
-    }
-    
-    // Add to the beginning of the array to show the newest first
-    tradeIns.value.unshift(newTradeIn)
-
     // Reset form
     Object.keys(form).forEach((key) => {
       form[key] = ""
@@ -599,8 +587,9 @@ const submitTradeIn = async () => {
     // Show success message
     alert("Trade-in request submitted successfully!")
     
-    // Switch to status tab to show the new submission
+    // Switch to status tab and load all trade-in history
     activeTab.value = 'status';
+    await loadTradeInHistory(); // Load all trade-in requests from the database
     
   } catch (error) {
     console.error('Error submitting trade-in:', error);
@@ -713,13 +702,14 @@ const formatDate = (date) => {
 };
 
 const getStatusClass = (status) => {
-  switch (status) {
-    case 'Accepted': return 'status-accepted';
-    case 'Rejected': return 'status-rejected';
-    case 'Pending': return 'status-pending';
-    case 'Claimed': return 'status-claimed';
-    default: return '';
-  }
+  // Convert to lowercase for case-insensitive comparison
+  const statusLower = status?.toLowerCase() || '';
+  
+  if (statusLower.includes('accept')) return 'status-accepted';
+  if (statusLower.includes('reject')) return 'status-rejected';
+  if (statusLower.includes('pend')) return 'status-pending';
+  if (statusLower.includes('claim')) return 'status-claimed';
+  return '';
 };
 
 // Initialize component
@@ -1003,6 +993,8 @@ input, textarea, select {
   border: 1px solid #e0e0e0;
   border-radius: 10px;
   font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: normal;
   transition: all 0.3s ease;
   background-color: #fafafa;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
@@ -1012,6 +1004,10 @@ textarea {
   padding: 14px 15px;
   resize: vertical;
   min-height: 120px;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: normal;
 }
 
 input:focus, textarea:focus, select:focus {
@@ -1302,38 +1298,69 @@ select {
   font-weight: 600;
 }
 
+/* Fixed status badge styles */
 .status-badge {
-  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
   border-radius: 30px;
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.status-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .status-icon {
+  margin-right: 6px;
   display: flex;
   align-items: center;
-  justify-content: center;
 }
 
-/* Updated status colors to be less jarring */
-.status-accepted {
-  background-color: #7cb342; /* Softer green */
+/* Status-specific colors with !important to override any other styles */
+.status-badge.status-pending {
+  background: #fff !important;
+  border: 2px solid #ff9800 !important;
+  color: #ff9800 !important;
 }
 
-.status-rejected {
-  background-color: #e57373; /* Softer red */
+.status-badge.status-accepted {
+  background: #fff !important;
+  border: 2px solid #4caf50 !important;
+  color: #4caf50 !important;
 }
 
-.status-pending {
-  background-color: #ffb74d; /* Softer orange */
+.status-badge.status-rejected {
+  background: #fff !important;
+  border: 2px solid #f44336 !important;
+  color: #f44336 !important;
 }
 
-.status-claimed {
-  background-color: #ba68c8; /* Softer purple */
+.status-badge.status-claimed {
+  background: #fff !important;
+  border: 2px solid #9c27b0 !important;
+  color: #9c27b0 !important;
+}
+
+/* Status icon colors */
+.status-badge.status-pending .status-icon {
+  color: #ff9800 !important;
+}
+
+.status-badge.status-accepted .status-icon {
+  color: #4caf50 !important;
+}
+
+.status-badge.status-rejected .status-icon {
+  color: #f44336 !important;
+}
+
+.status-badge.status-claimed .status-icon {
+  color: #9c27b0 !important;
 }
 
 .card-content {
@@ -1398,7 +1425,11 @@ select {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  justify-self: end;
+  /* justify-self: end; */
+}
+
+.points-row{
+  margin-top: 8px;
 }
 
 .claimed-row {

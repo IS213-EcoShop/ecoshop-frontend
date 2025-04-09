@@ -50,6 +50,14 @@
                 <p>Complete your purchase to earn points!</p>
               </div>
             </div>
+
+            <!-- Voucher Applied Notification -->
+            <div v-if="showVoucherApplied" class="toast show">
+              <div class="toast-content">
+                <check-circle-icon class="toast-icon" />
+                <span>Voucher applied!</span>
+              </div>
+            </div>
             
             <div class="cart-items">
               <div v-for="(item, index) in cartItems" :key="item.productId" class="cart-item">
@@ -130,6 +138,10 @@
             </div>
 
             <div class="cart-summary">
+              <div v-if="activeVoucher" class="voucher-info">
+                <span>Voucher Discount:</span>
+                <span>-${{ voucherDiscount.toFixed(2) }}</span>
+              </div>
               <div class="subtotal">
                 <span>Subtotal:</span>
                 <span>${{ calculateSubtotal().toFixed(2) }}</span>
@@ -149,10 +161,15 @@
                 <arrow-left-icon size="16" />
                 Continue Shopping
               </a>
-              <button @click="checkout" class="checkout-btn" :disabled="isProcessingPayment">
-                <credit-card-icon size="16" />
-                {{ isProcessingPayment ? 'Processing...' : 'Proceed to Checkout' }}
-              </button>
+              <div class="checkout-buttons">
+                <button v-if="activeVoucher" @click="removeVoucher" class="remove-voucher-btn">
+                  Remove Voucher
+                </button>
+                <button @click="checkout" class="checkout-btn" :disabled="isProcessingPayment">
+                  <credit-card-icon size="16" />
+                  {{ isProcessingPayment ? 'Processing...' : 'Proceed to Checkout' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -236,6 +253,10 @@ export default {
       activeMissions: [],
       hasPurchaseMission: false,
       windowCheckInterval: null,
+      // New properties for voucher handling
+      activeVoucher: null,
+      voucherDiscount: 0,
+      showVoucherApplied: false,
     }
   },
   methods: {
@@ -696,6 +717,19 @@ export default {
         this.isProcessingPayment = false
       }
     },
+    
+    // Add a handler for the voucher-redeemed event
+    handleVoucherRedeemed(event) {
+      console.log("Voucher redeemed event received:", event.detail)
+      this.activeVoucher = event.detail
+      this.voucherDiscount = parseFloat(this.activeVoucher.amount) || 0
+      
+      // Show voucher applied notification
+      this.showVoucherApplied = true
+      setTimeout(() => {
+        this.showVoucherApplied = false
+      }, 3000)
+    },
 
     startPaymentStatusCheck(orderData) {
       // Clear any existing interval
@@ -1100,8 +1134,9 @@ export default {
     // Clean up interval when component is destroyed
     this.stopPaymentStatusCheck()
 
-    // Remove event listener
+    // Remove event listeners
     window.removeEventListener("focus", this.handleWindowFocus)
+    window.removeEventListener('voucher-redeemed', this.handleVoucherRedeemed)
   },
 }
 </script>
@@ -1861,5 +1896,44 @@ button {
   .recommendations-list {
     grid-template-columns: 1fr;
   }
+}
+
+/* Voucher Styles */
+.voucher-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 500;
+  color: #388e3c;
+  margin-top: 8px;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 16px;
+}
+
+.remove-voucher-btn {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.remove-voucher-btn:hover {
+  background-color: #b71c1c;
+}
+
+.checkout-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 </style>
