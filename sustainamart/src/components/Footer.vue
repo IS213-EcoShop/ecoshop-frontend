@@ -12,7 +12,7 @@
         <h3 class="footer-title">Links</h3>
         <a href="/about" class="footer-link">About Us</a>
         <a href="/marketplace" class="footer-link">Marketplace</a>
-        <a href="/trade-in" class="footer-link">Trade-in Service</a>
+        <a href="/trade-in" class="footer-link">Trade-In Service</a>
         <a href="/sustainability" class="footer-link">Sustainability Challenges</a>
         <a href="/rewards" class="footer-link">Rewards</a>
       </div>

@@ -5,7 +5,7 @@
       <nav class="nav">
         <a href="/about" class="nav-link">About Us</a>
         <a href="/marketplace" class="nav-link">Marketplace</a>
-        <a href="/trade-in" class="nav-link">Trade-in Service</a>
+        <a href="/trade-in" class="nav-link">Trade-In Service</a>
         <a href="/rewards" class="nav-link">Sustainability Challenges & Rewards</a>
         <a href="/contact" class="nav-link">Contact Us</a>
       </nav>
