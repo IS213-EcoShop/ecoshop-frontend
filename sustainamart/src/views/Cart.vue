@@ -92,12 +92,65 @@
               </div>
             </div>
 
+            <!-- Voucher Section -->
+            <div class="voucher-section">
+              <h3 class="voucher-title">
+                <ticket-icon size="18" />
+                Apply Voucher
+              </h3>
+              
+              <div v-if="loadingVouchers" class="loading-vouchers">
+                <div class="loading-spinner-small"></div>
+                <span>Loading your vouchers...</span>
+              </div>
+              
+              <div v-else-if="vouchers.length === 0" class="no-vouchers">
+                <p>You don't have any vouchers available.</p>
+              </div>
+              
+              <div v-else class="voucher-list">
+                <div 
+                  v-for="(voucher, index) in vouchers" 
+                  :key="index" 
+                  class="voucher-item"
+                  :class="{ 'selected': selectedVoucherIndex === index }"
+                  @click="selectVoucher(voucher, index)"
+                >
+                  <div class="voucher-info">
+                    <h4 class="voucher-name">{{ voucher.name }}</h4>
+                    <p class="voucher-expiry">Expires: {{ formatDate(voucher.expires_at) }}</p>
+                  </div>
+                  <div class="voucher-value">${{ voucher.value }}</div>
+                  <div v-if="selectedVoucherIndex === index" class="voucher-selected-indicator">
+                    <check-icon size="16" />
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                v-if="selectedVoucher" 
+                @click="removeVoucher" 
+                class="remove-voucher-btn"
+              >
+                <x-icon size="14" />
+                Remove Voucher
+              </button>
+            </div>
+
             <div class="cart-summary">
               <div v-if="activeVoucher" class="voucher-info">
                 <span>Voucher Discount:</span>
                 <span>-${{ voucherDiscount.toFixed(2) }}</span>
               </div>
               <div class="subtotal">
+                <span>Subtotal:</span>
+                <span>${{ calculateSubtotal().toFixed(2) }}</span>
+              </div>
+              <div v-if="selectedVoucher" class="discount">
+                <span>Voucher Discount:</span>
+                <span>-${{ selectedVoucher.value.toFixed(2) }}</span>
+              </div>
+              <div class="total">
                 <span>Total:</span>
                 <span>${{ calculateTotal().toFixed(2) }}</span>
               </div>
@@ -179,6 +232,10 @@ export default {
       recommendations: [],
       isLoading: false,
       loadingRecommendations: false,
+      loadingVouchers: false,
+      vouchers: [],
+      selectedVoucher: null,
+      selectedVoucherIndex: null,
       error: null,
       showToast: false,
       toastMessage: "",
@@ -257,6 +314,85 @@ export default {
       } finally {
         this.isLoading = false
       }
+    },
+
+    async fetchVouchers() {
+      this.loadingVouchers = true
+      
+      try {
+        const response = await fetch(`http://localhost:5402/wallet/voucher/${this.userId}`)
+        
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`)
+        }
+        
+        const result = await response.json()
+        this.vouchers = result.vouchers || []
+        console.log("Vouchers fetched:", this.vouchers)
+      } catch (error) {
+        console.error("Error fetching vouchers:", error)
+        this.vouchers = []
+      } finally {
+        this.loadingVouchers = false
+      }
+    },
+
+    selectVoucher(voucher, index) {
+      // Check if the voucher can be applied (e.g., minimum spend requirement)
+      const subtotal = this.calculateSubtotal()
+      
+      // Example: Check if the voucher has a minimum spend requirement (from the name)
+      const minSpendMatch = voucher.name.match(/min\. spend \$(\d+)/)
+      
+      if (minSpendMatch && minSpendMatch[1]) {
+        const minSpend = parseFloat(minSpendMatch[1])
+        
+        if (subtotal < minSpend) {
+          this.toastMessage = `This voucher requires a minimum spend of $${minSpend}.`
+          this.showToast = true
+          setTimeout(() => {
+            this.showToast = false
+          }, 3000)
+          return
+        }
+      }
+      
+      // If already selected, deselect it
+      if (this.selectedVoucherIndex === index) {
+        this.selectedVoucher = null
+        this.selectedVoucherIndex = null
+      } else {
+        this.selectedVoucher = voucher
+        this.selectedVoucherIndex = index
+        
+        // Show toast notification
+        this.toastMessage = `Voucher applied: ${voucher.name}`
+        this.showToast = true
+        setTimeout(() => {
+          this.showToast = false
+        }, 3000)
+      }
+    },
+    
+    removeVoucher() {
+      this.selectedVoucher = null
+      this.selectedVoucherIndex = null
+      
+      // Show toast notification
+      this.toastMessage = "Voucher removed"
+      this.showToast = true
+      setTimeout(() => {
+        this.showToast = false
+      }, 3000)
+    },
+    
+    formatDate(dateString) {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      })
     },
 
     async fetchRecommendations() {
@@ -470,60 +606,15 @@ export default {
     },
 
     calculateSubtotal() {
-      const subtotal = this.cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
-      return subtotal
-    },
-
-    // Add this new method to load voucher from localStorage
-    loadActiveVoucher() {
-      try {
-        const storedVoucher = localStorage.getItem('activeVoucher')
-        if (storedVoucher) {
-          this.activeVoucher = JSON.parse(storedVoucher)
-          this.voucherDiscount = parseFloat(this.activeVoucher.amount) || 0
-          
-          // Show voucher applied notification if we just arrived from rewards page
-          const fromRewards = localStorage.getItem('fromRewardsPage')
-          if (fromRewards) {
-            this.showVoucherApplied = true
-            setTimeout(() => {
-              this.showVoucherApplied = false
-            }, 3000)
-            localStorage.removeItem('fromRewardsPage')
-          }
-          
-          console.log("Loaded active voucher:", this.activeVoucher)
-        }
-      } catch (error) {
-        console.error("Error loading voucher from localStorage:", error)
-      }
+      return this.cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
     },
     
-    // Add this method to remove the voucher
-    removeVoucher() {
-      this.activeVoucher = null
-      this.voucherDiscount = 0
-      localStorage.removeItem('activeVoucher')
-      
-      // Show toast notification
-      this.toastMessage = "Voucher removed from cart"
-      this.showToast = true
-      setTimeout(() => {
-        this.showToast = false
-      }, 3000)
-    },
-    
-    // Add a new method to calculate the final total after voucher discount
     calculateTotal() {
       const subtotal = this.calculateSubtotal()
-      let total = subtotal
+      const discount = this.selectedVoucher ? this.selectedVoucher.value : 0
       
-      // Apply voucher discount if available
-      if (this.activeVoucher && this.voucherDiscount > 0) {
-        total = Math.max(0, subtotal - this.voucherDiscount)
-      }
-      
-      return total
+      // Ensure total doesn't go below zero
+      return Math.max(subtotal - discount, 0)
     },
 
     async checkout() {
@@ -541,25 +632,22 @@ export default {
           await this.updateMissionProgress("purchase_product")
         }
 
-        // Prepare checkout data including voucher if available
-        const checkoutData = { 
+        // Prepare payload with voucher information if selected
+        const payload = { 
           userID: this.userId 
         }
         
-        // Add voucher information if available
-        if (this.activeVoucher) {
-          checkoutData.voucher = {
-            id: this.activeVoucher.id,
-            code: this.activeVoucher.code,
-            amount: this.activeVoucher.amount
-          }
+        // Add voucher information if a voucher is selected
+        if (this.selectedVoucher) {
+          payload.voucherId = this.selectedVoucher.id
+          payload.voucherValue = this.selectedVoucher.value
         }
 
         // Place order via microservice
         const placeOrderResponse = await fetch("http://127.0.0.1:8000/place_order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(checkoutData),
+          body: JSON.stringify(payload),
         })
 
         if (!placeOrderResponse.ok) {
@@ -806,6 +894,9 @@ export default {
       // Show success message
       this.toastMessage = "Payment successful! Your order has been placed."
       this.showToast = true
+      
+      // Clear selected voucher after successful payment
+      this.selectedVoucher = null
 
       // Redirect to rewards page if missions were completed
       if (this.hasPurchaseMission) {
@@ -1011,16 +1102,11 @@ export default {
     },
   },
   mounted() {
-    // Fetch cart items and recommendations when the component is mounted
+    // Fetch cart items, recommendations, and vouchers when the component is mounted
     this.fetchCartItems()
     this.fetchRecommendations()
     this.fetchActiveMissions()
-    
-    // Load active voucher from localStorage
-    this.loadActiveVoucher()
-    
-    // Listen for voucher-redeemed events
-    window.addEventListener('voucher-redeemed', this.handleVoucherRedeemed)
+    this.fetchVouchers() // Add this to fetch vouchers on mount
 
     // Check if we're returning from a payment (URL contains a session_id parameter)
     const urlParams = new URLSearchParams(window.location.search)
@@ -1053,9 +1139,6 @@ export default {
     window.removeEventListener('voucher-redeemed', this.handleVoucherRedeemed)
   },
 }
-
-
-
 </script>
 
 <script setup>
@@ -1067,7 +1150,10 @@ import {
   ArrowLeft as ArrowLeftIcon,
   CreditCard as CreditCardIcon,
   CheckCircle as CheckCircleIcon,
-  Trophy as TrophyIcon
+  Trophy as TrophyIcon,
+  Ticket as TicketIcon,
+  Check as CheckIcon,
+  X as XIcon
 } from 'lucide-vue-next'
 </script>
 
@@ -1198,6 +1284,16 @@ button {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
+}
+
+.loading-spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #704116;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 10px;
 }
 
 @keyframes spin {
@@ -1405,6 +1501,114 @@ button {
   opacity: 0.8;
 }
 
+/* Voucher Section */
+.voucher-section {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.voucher-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #704116;
+  margin-bottom: 16px;
+}
+
+.loading-vouchers {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  color: #666;
+}
+
+.no-vouchers {
+  padding: 10px 0;
+  color: #666;
+  font-style: italic;
+}
+
+.voucher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.voucher-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.voucher-item:hover {
+  border-color: #704116;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.voucher-item.selected {
+  border-color: #704116;
+  background-color: #f8ead7;
+}
+
+.voucher-info {
+  flex: 1;
+}
+
+.voucher-name {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.voucher-expiry {
+  font-size: 12px;
+  color: #666;
+}
+
+.voucher-value {
+  font-weight: 600;
+  color: #704116;
+  font-size: 16px;
+}
+
+.voucher-selected-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #704116;
+}
+
+.remove-voucher-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 6px 12px;
+  border: 1px solid #e97171;
+  border-radius: 4px;
+  color: #e97171;
+  font-size: 14px;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.remove-voucher-btn:hover {
+  background-color: #fff1f1;
+}
+
 /* Cart summary */
 .cart-summary {
   margin-top: 24px;
@@ -1413,11 +1617,26 @@ button {
   border-radius: 8px;
 }
 
-.subtotal {
+.subtotal, .discount, .total {
   display: flex;
   justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.subtotal, .discount {
+  font-size: 16px;
+}
+
+.discount {
+  color: #e97171;
+}
+
+.total {
   font-size: 18px;
   font-weight: 600;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #ddd;
 }
 
 /* Recommendations Section */
