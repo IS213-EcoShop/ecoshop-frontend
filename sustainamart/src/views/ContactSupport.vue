@@ -52,8 +52,9 @@
               </div>
               <div class="info-content">
                 <h3 class="info-title">Address</h3>
-                <p class="info-text">81 Victoria St,</p>
-                <p class="info-text">Singapore 188065</p>
+                <p class="info-text">2 Bayfront Avenue, Unit B1-41</p>
+                <p class="info-text">The Shoppes at Marina Bay Sands</p>
+                <p class="info-text">Singapore 018972</p>
               </div>
             </div>
 

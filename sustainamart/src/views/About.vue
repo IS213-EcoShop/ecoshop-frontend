@@ -54,19 +54,19 @@
     <section class="categories-section">
       <h2 class="section-title">Shop By Categories</h2>
       <div class="categories-grid">
-        <div class="category-card" @click="goToCategory('green-beauty')">
+        <div class="category-card" @click="goToCategory('Green-Beauty')">
           <img src="/aboutPage/greenbeauty.png?height=240&width=240" alt="Green beauty products" />
           <button class="category-button">GREEN BEAUTY</button>
         </div>
-        <div class="category-card" @click="goToCategory('tech-gadgets')">
+        <div class="category-card" @click="goToCategory('Technology')">
           <img src="/aboutPage/techgadget.png?height=240&width=240" alt="Tech gadgets" />
           <button class="category-button">TECH GADGETS</button>
         </div>
-        <div class="category-card" @click="goToCategory('sustainable-fashion')">
+        <div class="category-card" @click="goToCategory('Fashion')">
           <img src="/aboutPage/susfashion.png?height=240&width=240" alt="Sustainable fashion items" />
           <button class="category-button">SUSTAINABLE FASHION</button>
         </div>
-        <div class="category-card" @click="goToCategory('furniture-home-decor')">
+        <div class="category-card" @click="goToCategory('Furniture')">
           <img src="/aboutPage/furniture.png?height=240&width=240" alt="Home decor items" />
           <button class="category-button">FURNITURE & HOME DECOR</button>
         </div>
@@ -194,7 +194,14 @@ export default {
     },
     // Navigate to specific category in the marketplace
     goToCategory(category) {
-      this.$router.push(`/marketplace?category=${category}`).then(() => {
+      // Store selected category in localStorage for persistence
+      localStorage.setItem('selectedCategory', category);
+      
+      // Navigate to marketplace with the category as a query parameter
+      this.$router.push({
+        path: '/marketplace',
+        query: { category: category }
+      }).then(() => {
         window.scrollTo(0, 0);
       });
     }

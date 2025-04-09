@@ -3,9 +3,9 @@
     <div class="footer-container">
       <div class="footer-column">
         <h3 class="footer-title">SustainaMart</h3>
-        <p class="footer-text">2 Bayfront Avenue,</p>
-        <p class="footer-text">Unit B1-41, The Shoppes at Marina Bay Sands,</p>
-        <p class="footer-text">Singapore, 018972, Singapore</p>
+        <p class="footer-text">2 Bayfront Avenue</p>
+        <p class="footer-text">Unit B1-41, The Shoppes at Marina Bay Sands</p>
+        <p class="footer-text">Singapore 018972</p>
       </div>
 
       <div class="footer-column">

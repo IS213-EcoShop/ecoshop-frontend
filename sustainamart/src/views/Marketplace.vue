@@ -53,7 +53,7 @@
               <h3>Categories</h3>
               <div class="filter-options">
                 <label class="checkbox-label">
-                  <input type="checkbox" v-model="filters.categories" value="Green Beauty"> Green Beauty/ Personal Care
+                  <input type="checkbox" v-model="filters.categories" value="Green-Beauty"> Green Beauty/ Personal Care
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" v-model="filters.categories" value="Technology"> Technology Gadgets
@@ -170,6 +170,9 @@ export default {
     console.log('MARKETPLACE - created')
     // Load cart from localStorage
     this.loadCartFromStorage()
+    
+    // Check for category filter from URL or localStorage
+    this.checkForCategoryFilter()
   },
   beforeMount() {
     console.log('MARKETPLACE - beforeMount')
@@ -251,6 +254,41 @@ export default {
     }
   },
   methods: {
+    // Check for category filter from URL or localStorage
+    checkForCategoryFilter() {
+      // First check URL query parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const categoryParam = urlParams.get('category');
+      
+      // If category is in URL, use it
+      if (categoryParam) {
+        console.log('Category found in URL:', categoryParam);
+        this.filters.categories = [categoryParam];
+        return;
+      }
+      
+      // If not in URL, check localStorage
+      const storedCategory = localStorage.getItem('selectedCategory');
+      if (storedCategory) {
+        console.log('Category found in localStorage:', storedCategory);
+        this.filters.categories = [storedCategory];
+        
+        // Update URL to reflect the filter (optional)
+        this.updateUrlWithCategory(storedCategory);
+        
+        // Clear localStorage after using it to prevent it from persisting
+        // across multiple page visits unless that's desired behavior
+        localStorage.removeItem('selectedCategory');
+      }
+    },
+    
+    // Update URL with category parameter without page reload
+    updateUrlWithCategory(category) {
+      const url = new URL(window.location);
+      url.searchParams.set('category', category);
+      window.history.pushState({}, '', url);
+    },
+    
     async fetchProducts() {
       this.isLoading = true
       this.error = null
