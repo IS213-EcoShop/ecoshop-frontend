@@ -1,6 +1,6 @@
 <template>
   <div class="trade-in-page">
-    <!-- Updated hero section with blurred background -->
+    <!-- Hero section with blurred background -->
     <div class="hero-section">
       <div class="hero-blur-overlay"></div>
       <div class="container hero-content">
@@ -55,6 +55,8 @@
           <p>Fill in the details below and upload clear photos of your item for quality assessment.</p>
           
           <form @submit.prevent="submitTradeIn">
+            <!-- Form content remains the same -->
+            <!-- Personal Information section -->
             <div class="form-section">
               <h4><UserIcon size="20" class="section-icon" /> Personal Information</h4>
               <div class="form-row">
@@ -104,6 +106,7 @@
               </div>
             </div>
 
+            <!-- Product Information section -->
             <div class="form-section">
               <h4><PackageIcon size="20" class="section-icon" /> Product Information</h4>
               <div class="form-row">
@@ -142,6 +145,7 @@
               </div>
             </div>
 
+            <!-- Product Images section -->
             <div class="form-section">
               <h4><ImageIcon size="20" class="section-icon" /> Product Images</h4>
               <p class="help-text">Upload a clear photo of your item (maximum 5 images).</p>
@@ -158,7 +162,7 @@
                   </button>
                 </div>
                 
-                <div class="upload-box" @click="triggerFileInput" v-if="imagePreviewUrls.length &lt; 5">
+                <div class="upload-box" @click="triggerFileInput" v-if="imagePreviewUrls.length < 5">
                   <UploadIcon size="24" />
                   <span>Upload Image</span>
                   <input 
@@ -306,7 +310,7 @@
           </div>
           <div>
             <p class="details-title">Your trade-in request is being processed</p>
-            <p class="details-text">Our quality assessment team is currently reviewing your item. This process typically takes 2-3 business days. You'll receive an email notification once the assessment is complete.</p>
+            <p class="details-text">Our quality assessment team is currently reviewing your item. This process typically takes 2-3 business days.</p>
           </div>
           
           <div class="centered-button">
@@ -332,7 +336,7 @@
           <div>
             <p class="details-title">Your trade-in request was not accepted</p>
             <p class="details-text">Unfortunately, we couldn't accept your item for the following reason:</p>
-            <p class="rejection-reason">The item shows significant wear and damage beyond what can be refurbished according to our sustainability standards.</p>
+            <p class="rejection-reason">{{ selectedItem ? selectedItem.rejection_reason || 'The item shows significant wear and damage beyond what can be refurbished according to our sustainability standards.' : 'The item shows significant wear and damage beyond what can be refurbished according to our sustainability standards.' }}</p>
           </div>
           
           <div class="centered-button">
@@ -357,20 +361,52 @@
           </div>
           <div>
             <p class="details-title">Your trade-in request has been accepted!</p>
-            <p class="details-text">Our team will collect your item for a face-to-face quality check.</p>
             <div class="collection-details">
               <p><strong>Collection Process:</strong></p>
               <ul>
                 <li>Our team will contact you within 2 business days to schedule a pickup.</li>
                 <li>Please ensure the item is ready for collection and matches the description provided.</li>
-                <li>Our staff will verify the condition during the face-to-face quality check.</li>
-                <li>Upon successful verification, your sustainability points will be available to claim.</li>
               </ul>
             </div>
           </div>
           
           <div class="centered-button">
             <button class="view-cart-btn" @click="showAcceptedDetails = false">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New View Details Popup for Claimed Items -->
+    <div class="notification-popup" v-if="showClaimedDetails">
+      <div class="notification-content new-style">
+        <div class="notification-header">
+          <h3>Request Status</h3>
+          <button class="close-btn" @click="showClaimedDetails = false">
+            <XIcon size="20" />
+          </button>
+        </div>
+        <div class="notification-body">
+          <div class="success-icon-wrapper">
+            <TrophyIcon size="32" class="success-icon" />
+          </div>
+          <div>
+            <p class="details-title">Your reward points have been claimed!</p>
+            <p class="details-text">Thank you for participating in our sustainability program. Your trade-in has been completed and the points have been added to your account.</p>
+            <div class="points-summary">
+              <div class="points-detail">
+                <span>Points Earned:</span>
+                <span class="points-value">20 Points</span>
+              </div>
+              <div class="points-detail">
+                <span>Claimed Date:</span>
+                <span class="date-value">{{ selectedItem ? formatDate(selectedItem.claimed_at || selectedItem.created_at) : formatDate(new Date()) }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="centered-button">
+            <button class="view-cart-btn" @click="showClaimedDetails = false">Close</button>
           </div>
         </div>
       </div>
@@ -447,8 +483,8 @@ const isSubmitting = ref(false);
 
 // Form data with autofilled personal information
 const form = reactive({
-  fullName: 'Ling Xiao',
-  email: 'lxjiang@smu.edu.sg',
+  fullName: 'Venice Hoe',
+  email: 'venicee04@gmail.com',
   phone: '94843940',
   address: 'Toh Guan Rd Blk 394 #05-12',
   productName: 'Shirt',
@@ -465,9 +501,11 @@ const uploadedFiles = ref([]);
 const showNotification = ref(false);
 const showPendingDetails = ref(false);
 const showRejectedDetails = ref(false);
+const showAcceptedDetails = ref(false);
+const showClaimedDetails = ref(false);
 const showCancelConfirmation = ref(false);
 const itemToCancel = ref(null);
-const showAcceptedDetails = ref(false);
+const selectedItem = ref(null);
 
 // Form validation
 const phoneError = ref(false);
@@ -579,8 +617,10 @@ const submitTradeIn = async () => {
     
     // Reset form
     Object.keys(form).forEach((key) => {
-      form[key] = ""
-    })
+      if (key !== 'fullName' && key !== 'email' && key !== 'phone' && key !== 'address') {
+        form[key] = "";
+      }
+    });
     imagePreviewUrls.value = []
     uploadedFiles.value = []
     
@@ -675,14 +715,27 @@ const claimRewardPoints = async (item, index) => {
   }
 };
 
-// Update the viewDetails function to handle the "Claimed" status the same as "Accepted"
+// Enhanced viewDetails function to handle all statuses and store the selected item
 const viewDetails = (item) => {
-  if (item.status === "Pending") {
-    showPendingDetails.value = true
-  } else if (item.status === "Rejected") {
-    showRejectedDetails.value = true
-  } else if (item.status === "Accepted" || item.status === "Claimed") {
-    showAcceptedDetails.value = true
+  selectedItem.value = item;
+  
+  // Reset all popup states first
+  showPendingDetails.value = false;
+  showRejectedDetails.value = false;
+  showAcceptedDetails.value = false;
+  showClaimedDetails.value = false;
+  
+  // Show the appropriate popup based on status
+  const status = item.status?.toLowerCase() || '';
+  
+  if (status.includes('pend')) {
+    showPendingDetails.value = true;
+  } else if (status.includes('reject')) {
+    showRejectedDetails.value = true;
+  } else if (status.includes('accept')) {
+    showAcceptedDetails.value = true;
+  } else if (status.includes('claim')) {
+    showClaimedDetails.value = true;
   }
 }
 
@@ -1724,28 +1777,28 @@ select {
   .hero-banner {
     padding: 80px 0 40px;
   }
-  
+
   .hero-title {
     font-size: 36px;
   }
-  
+
   .trade-in-list {
     grid-template-columns: 1fr;
   }
-  
+
   .card-content {
     flex-direction: column;
   }
-  
+
   .product-image {
     width: 100%;
     height: 200px;
   }
-  
+
   .card-actions {
     flex-direction: column;
   }
-  
+
   .action-btn {
     width: 100%;
     justify-content: center;
@@ -1764,5 +1817,38 @@ select {
 .beige-box {
   background-color: #e8d5b5 !important; /* Beige color */
   color: #5D3A1A !important; /* Darker text for contrast */
+}
+
+/* New styles for the claimed status popup */
+.points-summary {
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.points-detail {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #e0e0e0;
+}
+
+.points-detail:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.points-value {
+  font-weight: 600;
+  color: #5D3A1A;
+  display: flex;
+  align-items: center;
+}
+
+.date-value {
+  font-weight: 500;
 }
 </style>
