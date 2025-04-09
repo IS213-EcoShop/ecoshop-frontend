@@ -6,7 +6,8 @@ import Marketplace from '../views/Marketplace.vue'
 import Rewards from '../views/Rewards.vue'
 import TradeIn from '../views/TradeIn.vue'
 import ContactSupport from '../views/ContactSupport.vue'
-import Cart from '../views/Cart.vue' // Adjust the path as per your structure
+import Cart from '../views/Cart.vue'
+import Track from '../views/Track.vue'
 // import ProductDetail from '../views/ProductDetail.vue'
 
 const router = createRouter({
@@ -45,6 +46,11 @@ const router = createRouter({
       path: '/cart',
       name: 'cart',
       component: Cart,
+    },
+    {
+      path: '/track',
+      name: 'track',
+      component: Track,
     }
   ],
 })

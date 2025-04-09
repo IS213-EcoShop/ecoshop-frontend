@@ -8,6 +8,7 @@
         <a href="/trade-in" class="nav-link">Trade-In Service</a>
         <a href="/rewards" class="nav-link">Sustainability Challenges & Rewards</a>
         <a href="/contact" class="nav-link">Contact Us</a>
+        <a href="/track" class="nav-link">Tracking</a>
       </nav>
     </div>
     <div class="header-right">
