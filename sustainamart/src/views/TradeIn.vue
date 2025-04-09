@@ -555,7 +555,7 @@ const loadTradeInHistory = async () => {
 
   try {
     // Call the API to get trade-in history
-    const response = await fetch(`http://localhost:5400/trade-in/${userId.value}`);
+    const response = await fetch(`http://localhost:8000/trade-in/${userId.value}`);
     
     if (!response.ok) {
       throw new Error(`Failed to load trade-in history: ${response.status}`);
@@ -603,7 +603,7 @@ const submitTradeIn = async () => {
     }
     
     // Submit the form data to the trade-in microservice
-    const response = await fetch("http://localhost:5400/trade-in/request", {
+    const response = await fetch("http://localhost:8000/trade-in/request", {
       method: "POST",
       body: formData,
     })
@@ -642,7 +642,7 @@ const submitTradeIn = async () => {
 const claimRewardPoints = async (item, index) => {
   try {
     // Call the API to claim reward points
-    const response = await fetch(`http://localhost:5402/wallet/credit`, {
+    const response = await fetch(`http://localhost:8000/wallet/credit`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -664,7 +664,7 @@ const claimRewardPoints = async (item, index) => {
     console.log('Wallet updated successfully:', walletData);
     
     // Update the leaderboard with the total points
-    const leaderboardResponse = await fetch(`http://localhost:5404/leaderboard/update`, {
+    const leaderboardResponse = await fetch(`http://localhost:8000/leaderboard/update`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -683,7 +683,7 @@ const claimRewardPoints = async (item, index) => {
     
     // Update the trade-in status
     try {
-      const updateResponse = await fetch(`http://localhost:5400/trade-in/status/${item.id}`, {
+      const updateResponse = await fetch(`http://localhost:8000/trade-in/status/${item.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

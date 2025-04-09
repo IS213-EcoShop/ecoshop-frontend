@@ -338,7 +338,7 @@ const checkAndClearSession = () => {
 // Function to fetch wallet data (user points and vouchers)
 const fetchWalletData = async () => {
   try {
-    const response = await fetch(`http://localhost:5402/wallet/${userId.value}`)
+    const response = await fetch(`http://localhost:8000/wallet/${userId.value}`)
 
     if (!response.ok) {
       throw new Error(`Failed to fetch wallet data: ${response.status}`)
@@ -369,7 +369,7 @@ const fetchWalletData = async () => {
 const updateLeaderboardWithWalletPoints = async (points) => {
   try {
     // Call the leaderboard update API
-    const response = await fetch("http://localhost:5404/leaderboard/update", {
+    const response = await fetch("http://localhost:8000/leaderboard/update", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -396,7 +396,7 @@ const updateLeaderboardWithWalletPoints = async (points) => {
 // Function to fetch leaderboard data
 const fetchLeaderboardData = async () => {
   try {
-    const response = await fetch("http://localhost:5404/leaderboard/top")
+    const response = await fetch("http://localhost:8000/leaderboard/top")
 
     if (!response.ok) {
       throw new Error(`Failed to fetch leaderboard data: ${response.status}`)
@@ -445,7 +445,7 @@ const fetchLeaderboardData = async () => {
 // Function to fetch available voucher templates
 const fetchAvailableVouchers = async () => {
   try {
-    const response = await fetch("http://localhost:5406/voucher/templates")
+    const response = await fetch("http://localhost:8000/voucher/templates")
 
     if (!response.ok) {
       throw new Error(`Failed to fetch voucher data: ${response.status}`)
@@ -478,7 +478,7 @@ const fetchAvailableVouchers = async () => {
 // Function to fetch joined missions
 const fetchJoinedMissions = async () => {
   try {
-    const response = await fetch(`http://localhost:5403/mission/status/${userId.value}`)
+    const response = await fetch(`http://localhost:8000/mission/status/${userId.value}`)
 
     if (!response.ok) {
       throw new Error(`Failed to fetch joined missions: ${response.status}`)
@@ -603,7 +603,7 @@ const fetchAvailableMissions = async () => {
   try {
     // First try to fetch from the mission microservice
     try {
-      const response = await fetch("http://localhost:5403/mission/all")
+      const response = await fetch("http://localhost:8000/mission/all")
       
       if (response.ok) {
         const data = await response.json()
@@ -654,7 +654,7 @@ const fetchAvailableMissions = async () => {
 const checkForMissionUpdates = async () => {
   try {
     // Fetch the latest mission data
-    const response = await fetch(`http://localhost:5403/mission/status/${userId.value}`)
+    const response = await fetch(`http://localhost:8000/mission/status/${userId.value}`)
     
     if (!response.ok) {
       return
@@ -735,7 +735,7 @@ const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
     // Log the event type being processed
     console.log(`Processing mission update for event type: ${eventType}`)
     
-    const response = await fetch(`http://localhost:5403/mission/update`, {
+    const response = await fetch(`http://localhost:8000/mission/update`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -780,7 +780,7 @@ const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
         localStorage.setItem('recentlyCompletedMissions', JSON.stringify(recentlyCompletedMissions))
         
         // Fetch the completed mission details
-        const missionResponse = await fetch(`http://localhost:5403/mission/status/${userId.value}`)
+        const missionResponse = await fetch(`http://localhost:8000/mission/status/${userId.value}`)
         if (missionResponse.ok) {
           const missions = await missionResponse.json()
           const completedMission = missions.find(m => m.mission_id === result.mission_id)
@@ -820,7 +820,7 @@ const triggerMissionUpdate = async (eventType = "ECO_PURCHASE") => {
 const joinMission = async (mission) => {
   try {
     // Call the API to join the mission
-    const response = await fetch("http://localhost:5403/mission/join", {
+    const response = await fetch("http://localhost:8000/mission/join", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -884,7 +884,7 @@ const redeemVoucher = async (voucher) => {
     }
 
     // Call the API to redeem the voucher
-    const response = await fetch(`http://localhost:5406/voucher/claim`, {
+    const response = await fetch(`http://localhost:8000/voucher/claim`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -950,7 +950,7 @@ const redeemVoucher = async (voucher) => {
 const useVoucher = async (voucher) => {
   try {
     // Call the API to use the voucher
-    const response = await fetch(`http://localhost:5402/wallet/use-voucher`, {
+    const response = await fetch(`http://localhost:8000/wallet/use-voucher`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

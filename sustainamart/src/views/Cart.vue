@@ -320,7 +320,7 @@ export default {
       this.loadingVouchers = true
       
       try {
-        const response = await fetch(`http://localhost:5402/wallet/voucher/${this.userId}`)
+        const response = await fetch(`http://localhost:8000/wallet/voucher/${this.userId}`)
         
         if (!response.ok) {
           throw new Error(`Server responded with status: ${response.status}`)
@@ -458,7 +458,7 @@ export default {
         this.cartItems[index].quantity -= 1
 
         // Then connect to the specified backend endpoint
-        const response = await fetch("http://localhost:5300/cart-product/decrement", {
+        const response = await fetch("http://localhost:8000/cart-product/decrement", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -498,7 +498,7 @@ export default {
         this.cartItems.splice(index, 1)
 
         // Connect to the specified backend endpoint
-        const response = await fetch("http://localhost:5300/cart-product/remove", {
+        const response = await fetch("http://localhost:8000/cart-product/remove", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -552,7 +552,7 @@ export default {
         }
 
         // Then connect to the specified backend endpoint
-        const response = await fetch("http://localhost:5300/cart-product/add", {
+        const response = await fetch("http://localhost:8000/cart-product/add", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -934,7 +934,7 @@ export default {
         this.cartItems[index].quantity += 1
 
         // Then connect to the specified backend endpoint
-        const response = await fetch("http://localhost:5300/cart-product/add", {
+        const response = await fetch("http://localhost:8000/cart-product/add", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -967,7 +967,7 @@ export default {
     async fetchActiveMissions() {
       try {
         // Fetch user's active missions
-        const response = await fetch(`http://localhost:5403/mission/status/${this.userId}`)
+        const response = await fetch(`http://localhost:8000/mission/status/${this.userId}`)
 
         if (!response.ok) {
           console.error("Failed to fetch missions:", response.status)
@@ -989,7 +989,7 @@ export default {
     async updateMissionProgress(eventType) {
       try {
         // Call the mission update API
-        const response = await fetch(`http://localhost:5403/mission/update`, {
+        const response = await fetch(`http://localhost:8000/mission/update`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

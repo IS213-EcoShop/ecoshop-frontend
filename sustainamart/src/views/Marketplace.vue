@@ -374,7 +374,7 @@ export default {
     async updateCartItemCount() {
       try {
         // Fetch cart data from the server endpoint
-        const response = await fetch(`http://localhost:5201/cart/200`);
+        const response = await fetch(`http://localhost:8000/cart/200`);
         
         if (!response.ok) {
           // If response is 400 (BAD REQUEST), it means the cart doesn't exist
@@ -583,7 +583,7 @@ export default {
     async updateServerCart(productId, quantity) {
       try {
         // Connect to the specified backend endpoint
-        const response = await fetch('http://localhost:5300/cart-product/add', {
+        const response = await fetch('http://localhost:8000/cart-product/add', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
