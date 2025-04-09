@@ -310,7 +310,7 @@
           </div>
           <div>
             <p class="details-title">Your trade-in request is being processed</p>
-            <p class="details-text">Our quality assessment team is currently reviewing your item. This process typically takes 2-3 business days.</p>
+            <p class="details-text">Our quality assessment team is currently reviewing your item. This process typically takes 2-3 business days. You'll receive an email notification once the assessment is complete.</p>
           </div>
           
           <div class="centered-button">
